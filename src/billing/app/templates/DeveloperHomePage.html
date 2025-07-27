@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Developer Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      color: #fff;
+      background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), 
+                  url("https://images.pexels.com/photos/3274210/pexels-photo-3274210.jpeg") center center / cover no-repeat;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dev-box {
+      text-align: center;
+      background-color: rgba(0, 0, 0, 0.6);
+      padding: 4rem;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(229, 9, 20, 0.5);
+    }
+
+    .dev-box h1 {
+      font-size: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .check-btn {
+      padding: 1rem 2rem;
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: white;
+      background-color: #e50914;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .check-btn:hover {
+      background-color: #b00610;
+      transform: scale(1.05);
+    }
+
+    .result {
+      margin-top: 2rem;
+      font-size: 1.2rem;
+      color: #00ff00;
+    }
+
+    .result.error {
+      color: #ff4040;
+    }
+  </style>
+</head>
+<body>
+  <div class="dev-box">
+    <h1>Developer Tools</h1>
+    <button class="check-btn" onclick="checkHealth()">Check Server & Database</button>
+    <div id="result" class="result"></div>
+  </div>
+
+  <script>
+    function checkHealth() {
+      const result = document.getElementById("result");
+      result.textContent = "Checking...";
+      result.className = "result";
+      
+      fetch("/health")
+        .then(res => {
+          if (!res.ok) throw new Error("Server Error");
+          return res.json();
+        })
+        .then(data => {
+          if (data.status === "ok") {
+            result.textContent = "The database and the server are working properly.";
+            result.className = "result";
+          } else {
+            result.textContent = "Error, Please fix";
+            result.className = "result error";
+          }
+        })
+        .catch(err => {
+          result.textContent = "Error, Please fix";
+          result.className = "result error";
+        });
+    }
+  </script>
+</body>
+</html>

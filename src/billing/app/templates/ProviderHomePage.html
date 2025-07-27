@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Provider Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Roboto', sans-serif; }
+    body {
+      background: linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.75)), 
+                  url("https://images.pexels.com/photos/3274210/pexels-photo-3274210.jpeg") center center / cover no-repeat;
+      color: #fff;
+    }
+    .container {
+      max-width: 600px;
+      width: 80%;
+      margin: auto;
+      padding: 2rem;
+      position: relative;
+      top: 10vh;
+      background: rgba(0,0,0,0.6);
+      border-radius: 8px;
+    }
+    .container h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .action {
+      margin-bottom: 1.5rem;
+    }
+    .action h3 {
+      font-size: 1.2rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+    .fields {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .fields input {
+      flex: 1 1 auto;
+      padding: 0.5rem;
+      background: #333;
+      border: none;
+      outline: none;
+      border-radius: 4px;
+      color: #fff;
+    }
+    .fields input:focus {
+      background: #444;
+    }
+    .fields button {
+      padding: 0.5rem 1rem;
+      background: #e50914;
+      color: #fff;
+      font-weight: 500;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      flex: 0 0 auto;
+      transition: background 0.2s ease;
+    }
+    .fields button:hover {
+      background: #c40812;
+    }
+    #output {
+      white-space: pre-wrap;
+      background: #111;
+      padding: 1rem;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Provider Dashboard</h2>
+
+    <div class="action">
+      <h3>Check Truck Info</h3>
+      <div class="fields">
+        <input id="truckInfoId" type="text" placeholder="Truck ID" />
+        <button id="checkTruckBtn" type="button">Get Info</button>
+      </div>
+    </div>
+
+    <div class="action">
+      <h3>View Bill Info</h3>
+      <div class="fields">
+        <input id="billId" type="text" placeholder="Bill ID" />
+        <button id="viewBillBtn" type="button">Get Bill</button>
+      </div>
+    </div>
+
+    <div id="output"></div>
+  </div>
+
+  <script>
+    const outputEl = document.getElementById('output');
+    function displayOutput(text) {
+      let formatted = text;
+      try {
+        const data = JSON.parse(text);
+        formatted = JSON.stringify(data, null, 2);
+      } catch (e) { /* not JSON */ }
+      outputEl.textContent = formatted || "No data";
+    }
+
+    document.getElementById('checkTruckBtn').onclick = () => {
+      const truckId = document.getElementById('truckInfoId').value.trim();
+      if (!truckId) { outputEl.textContent = "Error: Truck ID required"; return; }
+      fetch(`/truck/${truckId}`)
+      .then(res => {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.text();
+      })
+      .then(text => displayOutput(text))
+      .catch(err => { outputEl.textContent = "Error: " + err; });
+    };
+
+    document.getElementById('viewBillBtn').onclick = () => {
+      const billId = document.getElementById('billId').value.trim();
+      if (!billId) { outputEl.textContent = "Error: Bill ID required"; return; }
+      fetch(`/bill/${billId}`)
+      .then(res => {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.text();
+      })
+      .then(text => displayOutput(text))
+      .catch(err => { outputEl.textContent = "Error: " + err; });
+    };
+  </script>
+</body>
+</html>

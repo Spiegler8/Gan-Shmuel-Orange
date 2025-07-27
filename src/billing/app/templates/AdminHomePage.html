@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Roboto', sans-serif; }
+    body {
+      background: linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.75)), 
+                  url("https://images.pexels.com/photos/3274210/pexels-photo-3274210.jpeg") center center / cover no-repeat;
+      color: #fff;
+    }
+    .container {
+      max-width: 600px;
+      width: 80%;
+      margin: auto;
+      padding: 2rem;
+      position: relative;
+      top: 5vh;
+      background: rgba(0,0,0,0.6);  /* translucent background panel */
+      border-radius: 8px;
+    }
+    .container h2 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .action {
+      margin-bottom: 1.5rem;
+    }
+    .action h3 {
+      font-size: 1.2rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+    .fields {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .fields input {
+      flex: 1 1 auto;
+      padding: 0.5rem;
+      background: #333;
+      border: none;
+      outline: none;
+      border-radius: 4px;
+      color: #fff;
+    }
+    .fields input:focus {
+      background: #444;
+    }
+    /* Style file input's button */
+    .fields input[type=file]::file-selector-button {
+      background: #444;
+      color: #fff;
+      border: none;
+      padding: 0.5rem 0.8rem;
+      margin-right: 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .fields input[type=file]::file-selector-button:hover {
+      background: #555;
+    }
+    .fields button {
+      padding: 0.5rem 1rem;
+      background: #e50914;
+      color: #fff;
+      font-weight: 500;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      flex: 0 0 auto;
+      transition: background 0.2s ease;
+    }
+    .fields button:hover {
+      background: #c40812; /* slightly darker red on hover */
+    }
+    #output {
+      white-space: pre-wrap;
+      background: #111;
+      padding: 1rem;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      /* #output will display results or messages */
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Admin Dashboard</h2>
+
+    <div class="action">
+      <h3>Create New Provider</h3>
+      <div class="fields">
+        <input id="newProviderName" type="text" placeholder="Provider Name" />
+        <button id="createProviderBtn" type="button">Create</button>
+      </div>
+    </div>
+
+    <div class="action">
+      <h3>Update Provider Name</h3>
+      <div class="fields">
+        <input id="updateProvId" type="number" placeholder="Provider ID" />
+        <input id="updateProvName" type="text" placeholder="New Name" />
+        <button id="updateProviderBtn" type="button">Update</button>
+      </div>
+    </div>
+
+    <div class="action">
+      <h3>Upload Rates File</h3>
+      <div class="fields">
+        <input id="ratesFileInput" type="file" />
+        <button id="uploadRatesBtn" type="button">Upload</button>
+      </div>
+    </div>
+
+    <div class="action">
+      <h3>Download Rates File</h3>
+      <div class="fields">
+        <button id="downloadRatesBtn" type="button">Download</button>
+      </div>
+    </div>
+
+    <div class="action">
+      <h3>Register Truck</h3>
+      <div class="fields">
+        <input id="newTruckId" type="text" placeholder="Truck ID" />
+        <input id="newTruckProvId" type="number" placeholder="Provider ID" />
+        <button id="registerTruckBtn" type="button">Register</button>
+      </div>
+    </div>
+
+    <div class="action">
+      <h3>Update Truck Provider</h3>
+      <div class="fields">
+        <input id="updateTruckId" type="text" placeholder="Truck ID" />
+        <input id="newTruckProvId2" type="number" placeholder="New Provider ID" />
+        <button id="updateTruckBtn" type="button">Update</button>
+      </div>
+    </div>
+
+    <div id="output"></div>
+  </div>
+
+  <script>
+    const outputEl = document.getElementById('output');
+    function displayOutput(text) {
+      // Try to format JSON if possible, otherwise show plain text
+      let formatted = text;
+      try {
+        const data = JSON.parse(text);
+        formatted = JSON.stringify(data, null, 2);
+      } catch (e) {
+        // not JSON or invalid JSON
+      }
+      outputEl.textContent = formatted || "Success";
+    }
+
+    document.getElementById('createProviderBtn').onclick = () => {
+      const name = document.getElementById('newProviderName').value.trim();
+      fetch("/provider", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.text();
+      })
+      .then(text => displayOutput(text))
+      .catch(err => { outputEl.textContent = "Error: " + err; });
+    };
+
+    document.getElementById('updateProviderBtn').onclick = () => {
+      const provId = document.getElementById('updateProvId').value.trim();
+      const newName = document.getElementById('updateProvName').value.trim();
+      if (!provId) { outputEl.textContent = "Error: Provider ID required"; return; }
+      fetch(`/provider/${provId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.text();
+      })
+      .then(text => displayOutput(text))
+      .catch(err => { outputEl.textContent = "Error: " + err; });
+    };
+
+    document.getElementById('uploadRatesBtn').onclick = () => {
+      const fileInput = document.getElementById('ratesFileInput');
+      if (!fileInput.files.length) { outputEl.textContent = "Error: No file selected"; return; }
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+      fetch("/rates", {
+        method: "POST",
+        body: formData
+      })
+      .then(res => {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.text();
+      })
+      .then(text => displayOutput(text))
+      .catch(err => { outputEl.textContent = "Error: " + err; });
+    };
+
+    document.getElementById('downloadRatesBtn').onclick = () => {
+      fetch("/rates")
+      .then(res => {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.blob();
+      })
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "rates_file";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        outputEl.textContent = "Downloading rates file...";
+      })
+      .catch(err => { outputEl.textContent = "Error: " + err; });
+    };
+
+    document.getElementById('registerTruckBtn').onclick = () => {
+      const truckId = document.getElementById('newTruckId').value.trim();
+      const providerId = document.getElementById('newTruckProvId').value.trim();
+      fetch("/truck", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: truckId, provider_id: providerId })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.text();
+      })
+      .then(text => displayOutput(text))
+      .catch(err => { outputEl.textContent = "Error: " + err; });
+    };
+
+    document.getElementById('updateTruckBtn').onclick = () => {
+      const truckId = document.getElementById('updateTruckId').value.trim();
+      const newProvId = document.getElementById('newTruckProvId2').value.trim();
+      if (!truckId) { outputEl.textContent = "Error: Truck ID required"; return; }
+      fetch(`/truck/${truckId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider_id: newProvId })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.text();
+      })
+      .then(text => displayOutput(text))
+      .catch(err => { outputEl.textContent = "Error: " + err; });
+    };
+  </script>
+</body>
+</html>

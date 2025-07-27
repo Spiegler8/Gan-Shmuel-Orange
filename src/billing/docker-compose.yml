@@ -1,8 +1,26 @@
-version: "3.9"
 services:
   billing:
     build: .
     container_name: billing_service
     ports:
       - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=billingdb
+      - DB_USER=root
+      - DB_PASSWORD=rootpass
+      - DB_NAME=billingdb
+    volumes:
+      - ./app:/app
     command: python billing.py
+  db:
+    image: mysql:8.0
+    container_name: billing_db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassdo
+      MYSQL_DATABASE: billingdb
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./db_schemas:/docker-entrypoint-initdb.d
