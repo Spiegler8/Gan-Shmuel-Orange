@@ -1,23 +1,36 @@
+import os
+
+import mysql.connector
 from flask import Flask
-from datetime import datetime 
-import sqlite3 
 
 app = Flask(__name__)
 
 
-# opens a connection to the database
+# Connection function
 def get_db_connection():
-    conn = sqlite3.connect('weight.db')
-    conn.row_factory = sqlite3.Row # allows to access columns by name instead of index
-    return conn
+    return mysql.connector.connect(
+        host=os.environ.get("MYSQL_HOST", "db"),
+        user=os.environ.get("MYSQL_USER", "root"),
+        password=os.environ.get("MYSQL_PASSWORD", "root"),
+        database=os.environ.get("MYSQL_DATABASE", "weight")
+    )
 
-# health check
+
+@app.route("/", methods=["GET"])
+def home():
+    return "Weight service is running", 200
+
+
 @app.route("/health", methods=["GET"])
 def health_check():
     try:
-        conn = get_db_connection() # connects to the database
-        conn.execute("SELECT 1;") # runs a query to check if the database is reachable
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1;")
+        cursor.fetchone()
+        cursor.close()
+        conn.close()
         return "OK", 200
-    except :
+    except Exception as e:
+        print("Health check failed:", e)
         return "Failure", 500
-    
