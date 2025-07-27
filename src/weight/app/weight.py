@@ -4,7 +4,6 @@ from flask import Flask,request,jsonify
 from datetime import datetime 
 import mysql.connector
 
-
 app = Flask(__name__)
 
 
@@ -173,3 +172,49 @@ def record_weight():
         if conn:
             conn.close()
 
+    
+
+@app.route("/weight", methods=["GET"])
+def get_weight():
+    t1 = request.args.get("from")
+    t2 = request.args.get("to")
+    filters = request.args.get("filter", "in,out,none").split(",")
+
+    # If the user didn’t send from, set it to today at midnight
+    if not t1:
+        t1 = datetime.now().strftime("%Y%m%d") + "000000"
+    # If the user didn’t send to, set it to now
+    if not t2:
+        t2 = datetime.now().strftime("%Y%m%d%H%M%S")
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        placeholders = ",".join(["%s"] * len(filters))
+        query = """
+            SELECT id, direction, bruto,neto, produce, containers
+            FROM weights
+            WHERE timestamp >= %s AND timestamp <= %s
+            AND direction IN (%s)
+            """ % ({placeholders})
+
+        params = [t1,t2] + filters
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+        for row in rows:
+            row["containers"] = row["containers"].split(",") if row["containers"] else []
+
+        cursor.close()
+        conn.close()
+
+        return jsonify(rows), 200
+    
+    except Exception as e:
+        print("Error fetching weights:", e)
+        return "Failure", 500
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
