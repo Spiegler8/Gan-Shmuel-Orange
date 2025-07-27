@@ -11,6 +11,22 @@ mysql_config = {
     'database': 'billingdb'
 }
 
+@app.route("/")
+def login():
+    return render_template("index.html")
+
+@app.route("/AdminHomePage")
+def admin_home():
+    return render_template("AdminHomePage.html")
+
+@app.route("/ProviderHomePage")
+def provider_home():
+    return render_template("ProviderHomePage.html")
+
+@app.route("/DeveloperHomePage")
+def developer_home():
+    return render_template("DeveloperHomePage.html")
+
 @app.route('/health', methods=['GET'])
 def health():
     try:
