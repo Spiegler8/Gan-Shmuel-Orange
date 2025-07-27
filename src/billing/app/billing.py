@@ -5,11 +5,27 @@ import os
 app = Flask(__name__)
 
 mysql_config = {
-    'host': 'mysql',
-    'user': 'root',
-    'password': 'rootpass',
-    'database': 'billingdb'
+    'host': os.environ.get('DB_HOST', 'billing_db'),
+    'user': os.environ.get('DB_USER', 'root'),
+    'password': os.environ.get('DB_PASSWORD', 'rootpass'),
+    'database': os.environ.get('DB_NAME', 'billingdb')
 }
+
+@app.route("/")
+def login():
+    return render_template("index.html")
+
+@app.route("/AdminHomePage")
+def admin_home():
+    return render_template("AdminHomePage.html")
+
+@app.route("/ProviderHomePage")
+def provider_home():
+    return render_template("ProviderHomePage.html")
+
+@app.route("/DeveloperHomePage")
+def developer_home():
+    return render_template("DeveloperHomePage.html")
 
 @app.route('/health', methods=['GET'])
 def health():
