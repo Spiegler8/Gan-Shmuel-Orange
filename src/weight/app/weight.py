@@ -173,3 +173,55 @@ def record_weight():
         if conn:
             conn.close()
 
+@app.route("/item/<item_id>", methods=["GET"])
+def get_item(item_id):
+   try:
+       conn = get_db_connection()
+       cursor = conn.cursor()
+       
+       # Get all transactions for this truck/container
+       cursor.execute("""
+           SELECT * FROM transactions 
+           WHERE truck = ? OR containers LIKE ?
+           ORDER BY datetime DESC
+       """, (item_id, f'%{item_id}%'))
+       
+       transactions = [dict(row) for row in cursor.fetchall()]
+       
+       if not transactions:
+           return jsonify({"error": "Item not found"}), 404
+           
+       return jsonify({
+           "item_id": item_id,
+           "transactions": transactions
+       }), 200
+       
+   except Exception as e:
+       return jsonify({"error": str(e)}), 500
+   finally:
+       if conn:
+           conn.close()
+
+
+if __name__ == '__main__':
+    with app.test_client() as client:
+        # Test POST /weight - "in" direction
+        in_data = {
+            "direction": "in",
+            "truck": "ABC-123",
+            "containers": ["C001", "C002"],
+            "bruto": 15000,
+            "produce": "tomatoes"
+        }
+        response = client.post('/weight', json=in_data)
+        print(f"POST in: {response.status_code} - {response.json}")
+
+        # Test POST /weight - "out" direction
+        out_data = {
+            "direction": "out",
+            "truck": "ABC-123", 
+            "containers": [],
+            "bruto": 8000
+        }
+        response = client.post('/weight', json=out_data)
+        print(f"POST out: {response.status_code} - {response.json}")
