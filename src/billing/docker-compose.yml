@@ -7,20 +7,27 @@ services:
     depends_on:
       - db
     environment:
-      - DB_HOST=billingdb
+      - DB_HOST=billingdb  # should match the container_name of the db
       - DB_USER=root
       - DB_PASSWORD=rootpass
       - DB_NAME=billingdb
     volumes:
       - ./app:/app
+    working_dir: /app
     command: python billing.py
+
   db:
     image: mysql:8.0
-    container_name: billing_db
+    container_name: billingdb
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassdo
+      MYSQL_ROOT_PASSWORD: rootpass
       MYSQL_DATABASE: billingdb
     ports:
       - "3306:3306"
     volumes:
       - ./db_schemas:/docker-entrypoint-initdb.d
+      - db_data:/var/lib/mysql  # recommended for persistent storage
+
+volumes:
+  db_data:
+
