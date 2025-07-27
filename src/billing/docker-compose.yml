@@ -5,6 +5,4 @@ services:
     container_name: billing_service
     ports:
       - "8000:8000"
-    env_file:
-      - .env  
     command: python billing.py
