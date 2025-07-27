@@ -16,7 +16,7 @@ def get_db_connection():
 def health_check():
     try:
         conn = get_db_connection() # connects to the database
-        conn.excute("SELECT 1;") # runs a query to check if the database is reachable
+        conn.execute("SELECT 1;") # runs a query to check if the database is reachable
         return "OK", 200
     except :
         return "Failure", 500
