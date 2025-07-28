@@ -30,10 +30,25 @@ def developer_home():
 
 @app.route('/health', methods=['GET'])
 def health():
+    conn = None
+    cursor = None
     try:
-        return "OK", 200
+        conn = mysql.connector.connect(**mysql_config)
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1;")
+        result = cursor.fetchone()
+        if result and result[0] == 1:
+            return "OK", 200
+        else:
+            return "Failure", 500
     except:
         return "Failure", 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 
 @app.route("/<provider>", methods=["POST"])
 def new_provider(provider):
