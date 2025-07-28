@@ -176,6 +176,7 @@ def record_weight():
 
 @app.route("/weight", methods=["GET"])
 def get_weight():
+    # Get query parameters
     t1 = request.args.get("from")
     t2 = request.args.get("to")
     filters = request.args.get("filter", "in,out,none").split(",")
@@ -198,22 +199,29 @@ def get_weight():
             WHERE datetime >= %s AND datetime <= %s
             AND direction IN ({placeholders})
             """
-
+        
         params = [t1,t2] + filters
         cursor.execute(query, params)
         rows = cursor.fetchall()
 
+        if not rows:
+            return jsonify({"error": "No records found for given criteria"}), 404
+
         for row in rows:
+            # Convert containers from comma-separated string to list
             row["containers"] = row["containers"].split(",") if row["containers"] else []
-
-        cursor.close()
-        conn.close()
-
+            # If neto is NULL in DB, return "na" 
+            row["neto"] = row["neto"] if row["neto"] is not None else "na"
+        
         return jsonify(rows), 200
     
     except Exception as e:
         print("Error fetching weights:", e)
-        return "Failure", 500
+        return jsonify({"error": "Database query failed"}), 500
+    
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()   
 
 
 
