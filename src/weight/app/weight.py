@@ -4,6 +4,8 @@ from flask import Flask,request,jsonify
 from datetime import datetime 
 import mysql.connector
 import json     # for parsing JSON file content
+import csv
+from io import StringIO
 
 app = Flask(__name__)
 
@@ -274,31 +276,35 @@ def get_session(session_id):
     and inserts or updates them in the containers_registered table.
 """
 def process_csv(content, conn):
-    cursor = conn.cursor()
-    for line in content.strip().split('\n'):
-        parts = line.strip().split(',')
-        if len(parts) != 2:
-            continue  # skip invalid lines
+    cursor = None
+    try:
+        cursor = conn.cursor()
+        reader = csv.reader(StringIO(content.strip()))
+        
+        for row in reader:
+            if len(row) != 2:
+                continue  # skip invalid lines
 
-        cid, value_unit = parts
-        cid = cid.strip()
-        value_unit = value_unit.strip().lower()
+            cid, value_unit = row
+            cid = cid.strip()
+            value_unit = value_unit.strip().lower()
 
-        # Determine the unit and extract the numeric value
-        if value_unit.endswith('kg'):
-            unit = 'kg'
-            value = value_unit[:-2]
-        elif value_unit.endswith('lbs'):
-            unit = 'lbs'
-            value = value_unit[:-3]
-        else:
-            raise ValueError(f"Missing or unsupported unit in line: {line}")
+            if value_unit.endswith('kg'):
+                unit = 'kg'
+                value = value_unit[:-2]
+            elif value_unit.endswith('lbs'):
+                unit = 'lbs'
+                value = value_unit[:-3]
+            else:
+                raise ValueError(f"Missing or unsupported unit in line: {','.join(row)}")
 
-        # Insert or update the record in the table
-        cursor.execute("""
-            INSERT OR REPLACE INTO containers_registered (container_id, weight, unit)
-            VALUES (?, ?, ?)
-        """, (cid, int(float(value)), unit))
+            cursor.execute("""
+                INSERT OR REPLACE INTO containers_registered (container_id, weight, unit)
+                VALUES (%s, %s, %s)
+            """, (cid, int(float(value)), unit))
+    finally:
+        if cursor:
+            cursor.close()
 
 # helper function for Post /batch-weight
 """
@@ -306,21 +312,27 @@ def process_csv(content, conn):
     Each object should contain: id, weight, and unit.
 """
 def process_json(content, conn):
-    cursor = conn.cursor()
-    data = json.loads(content)
+    cursor = None
+    try:
+        cursor = conn.cursor()
+        data = json.loads(content)
 
-    for entry in data:
-        cid = entry.get("id")
-        weight = entry.get("weight")
-        unit = entry.get("unit")
+        for entry in data:
+            cid = entry.get("id")
+            weight = entry.get("weight")
+            unit = entry.get("unit")
 
-        if not cid or weight is None or not unit:
-            raise ValueError(f"Missing fields in entry: {entry}")
+            if not cid or weight is None or not unit:
+                raise ValueError(f"Missing fields in entry: {entry}")
 
-        cursor.execute("""
-            INSERT OR REPLACE INTO containers_registered (container_id, weight, unit)
-            VALUES (?, ?, ?)
-        """, (cid.strip(), int(float(weight)), unit.lower()))
+            cursor.execute("""
+                INSERT OR REPLACE INTO containers_registered (container_id, weight, unit)
+                VALUES (%s, %s, %s)
+            """, (cid.strip(), int(float(weight)), unit.lower()))
+    finally:
+        if cursor:
+            cursor.close()
+
    
 """
     Uploads a .csv or .json file to register multiple containers in the database.
@@ -330,7 +342,7 @@ def batch_weight():
     file = request.files.get('file')  # get uploaded file from form-data
     if not file:
         return jsonify({"error": "No file uploaded"}), 400
-
+    conn = None
     try:
         content = file.read().decode("utf-8")  # decode file content
         conn = get_db_connection()  # connect to the database
@@ -347,11 +359,12 @@ def batch_weight():
         return jsonify({"message": "Containers saved successfully"}), 201
 
     except ValueError as ve:
-        print("ValueError:", ve) #debug
         return jsonify({"error": str(ve)}), 400
     except Exception as e:
-        print("Exception:", e) #debug
         return jsonify({"error": f"Failed to process file: {str(e)}"}), 400
+    finally:
+        if conn:
+            conn.close()
 
 
 
