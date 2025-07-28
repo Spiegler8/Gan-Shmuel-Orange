@@ -74,10 +74,10 @@
       fetch("/health")
         .then(res => {
           if (!res.ok) throw new Error("Server Error");
-          return res.json();
+          return res.text();  // now expecting plain text
         })
         .then(data => {
-          if (data.status === "ok") {
+          if (data.trim() === "OK") {
             result.textContent = "The database and the server are working properly.";
             result.className = "result";
           } else {
