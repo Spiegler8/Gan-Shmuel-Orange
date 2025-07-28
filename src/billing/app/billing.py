@@ -28,6 +28,10 @@ def provider_home():
 def developer_home():
     return render_template("DeveloperHomePage.html")
 
+@app.route('/')
+def root():
+    return "Billing service running", 200
+
 @app.route('/health', methods=['GET'])
 def health():
     try:
@@ -35,8 +39,12 @@ def health():
     except:
         return "Failure", 500
 
-@app.route("/<provider>", methods=["POST"])
-def new_provider(provider):
+@app.route("/provider", methods=["POST"])
+def new_provider():
+    data = request.get_json()
+    if not data or 'name' not in data:
+        return jsonify({'error': 'Missing provider name'}), 400
+    provider = data['name']
     if provider == "health":
         return {"error": "Invalid provider name"}, 400
 
@@ -130,6 +138,47 @@ def register_truck():
         )
         conn.commit()
         return jsonify({'message': 'Truck registered successfully'}), 201
+
+    except mysql.connector.Error as err:
+        return jsonify({'error': str(err)}), 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/truck/<int:id>', methods=['PUT'])
+def update_truck(id):
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'error': 'Missing provider'}), 400
+    
+    truck_id = data['id']
+
+    conn = None
+    cursor = None
+    try:
+        conn = mysql.connector.connect(**mysql_config)
+        cursor = conn.cursor()
+
+        # Check if truck exists
+        cursor.execute("SELECT id FROM Trucks WHERE id = %s", (id,))
+        if not cursor.fetchone():
+            return jsonify({'error': 'Truck not found'}), 404
+        # Check if provider exists
+        cursor.execute("SELECT id FROM Provider WHERE id = %s", (truck_id,))
+        if not cursor.fetchone():
+            return jsonify({'error': 'Provider not found'}), 404
+        # Update truck provider
+        cursor.execute(
+            "UPDATE Trucks SET provider_id = %s WHERE id = %s",
+            (truck_id, id)
+        )
+        conn.commit()
+
+        return jsonify({'message': f'Truck {id} updated successfully'}), 200
 
     except mysql.connector.Error as err:
         return jsonify({'error': str(err)}), 500
