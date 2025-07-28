@@ -36,9 +36,151 @@ def health_check():
         print("Health check failed:", e)
         return "Failure", 500
 
-    
+ # ----POST weight endpoint----
+
+# Helper function to find the last session for a truck
+def find_last_session(cursor, truck):
+    cursor.execute("""
+        SELECT id, direction FROM transactions
+        WHERE truck = %s 
+        ORDER BY datetime DESC LIMIT 1
+    """, (truck,))
+    return cursor.fetchone()
+
+# Helper function to find the last "in" session for a truck
+def find_last_in_session(cursor, truck):
+    cursor.execute("""
+        SELECT id, bruto, containers FROM transactions
+        WHERE truck = %s AND direction = 'in' AND truckTara IS NULL
+        ORDER BY datetime DESC LIMIT 1
+    """, (truck,))
+    return cursor.fetchone()
+
+# Helper function to calculate neto weight for an "out" session
+def calculate_neto(cursor, in_session, truck_tara):
+    total_container_tara = 0
+    unknown_containers = []
+
+    # For each container, find its tare weight in the containers_registered table
+    for container_id in in_session["containers"].split(","):
+        if container_id:
+            cursor.execute("""
+                SELECT weight FROM containers_registered
+                WHERE container_id=%s
+                """, (container_id,))
+            row = cursor.fetchone()           
+
+            if row and row["weight"] is not None: # If the container exists and has a weight, add it to the total
+                total_container_tara += row["weight"]           
+            else: # If it doesn't exist or has no weight, add to unknown_containers
+                unknown_containers.append(container_id)
+
+    # If even one container’s weight is missing, we cannot calculate neto correctly
+    if unknown_containers:
+        return None    
+    else:    
+        return in_session["bruto"] - truck_tara - total_container_tara
+
+
 @app.route("/weight", methods=["POST"])
 def record_weight():
+    conn = None
+    cursor = None
+    try:
+        data = request.get_json(force=True) # Reads the incoming JSON payload from the client request body
+        
+        # Extract and validate fields
+        direction = data.get("direction") # must be "in", "out", or "none"
+        truck = data.get("truck", "na") # truck license or "na" if not relevant
+        containers = data.get("containers", []) # list of container IDs, or an empty list if the client didnt send a containers field
+        weight = data.get("weight") # bruto weight of the truck/containers
+        unit = data.get("unit", "kg") # "kg" or "lbs", defaults to "kg"
+        force = data.get("force", False) # if True, used for overwriting previous records
+        produce = data.get("produce", "na") # produce type, defaults to "na"
+
+        # Validate required fields
+        if direction not in ["in", "out", "none"]:
+            return jsonify({"error": "Direction must be in, out, or none"}), 400
+        if weight is None:
+            return jsonify({"error": "Weight is required"}), 400
+        
+        # Convert containers to a list if it's a string
+        if isinstance(containers, str):
+            containers = [c.strip() for c in containers.split(",") if c.strip()]
+        containers_str = ",".join(containers)
+
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        truck_tara = None
+        neto = None
+        last = find_last_session(cursor, truck)
+        
+        if direction == "in":
+            if last and last["direction"] == "in" and not force:
+                return jsonify({"error": "Cannot do 'in' after 'in' without force=True"}), 400
+            if last and last["direction"] == "in" and force:
+                # If force is True, delete the last "in" record
+                cursor.execute("DELETE FROM transactions WHERE id = %s", (last["id"],))
+
+        elif direction == "out":
+            # Find the last "in" session for this truck
+            in_session = find_last_in_session(cursor, truck)
+            if not in_session:
+                return jsonify({"error": "No matching 'in' session found for this truck"}), 400
+            
+            truck_tara = weight
+            neto = calculate_neto(cursor, in_session, truck_tara)
+
+            # Update the "in" session with truckTara and neto
+            cursor.execute("""
+                UPDATE transactions
+                SET truckTara=%s, neto=%s
+                WHERE id=%s               
+            """, (truck_tara, neto, in_session["id"])) 
+
+        elif direction == "none":
+            if last and last["direction"] == "in":
+                return jsonify({"error": "'none' cannot follow 'in'"}), 400
+            
+        # Insert the new transaction record
+        cursor.execute("""
+            INSERT INTO transactions (datetime, direction, truck, containers, bruto, truckTara, neto, produce)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)             
+        """, (timestamp, direction, truck, containers_str, weight, truck_tara, neto, produce)) 
+        conn.commit()
+
+        # Get the ID of the newly inserted record
+        session_id = cursor.lastrowid
+
+        # response for all directions
+        response = {
+            "id": session_id,
+            "truck": truck,
+            "bruto": weight
+        }
+        
+        # if out also include truckTara and neto
+        if direction == "out":
+            response["truckTara"] = truck_tara
+            response["neto"] = neto if neto is not None else "na"
+
+        return jsonify(response), 201
+    
+    except Exception as e:
+        if conn:
+            conn.rollback() # Rollback any changes if an error occurs
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
+
+ # ----POST weight endpoint end----            
+
+# @app.route("/weight", methods=["POST"])
+# def record_weight():
     conn = None
     try:
         # Get database connection
