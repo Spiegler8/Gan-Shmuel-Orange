@@ -3,6 +3,7 @@ import os
 from flask import Flask,request,jsonify
 from datetime import datetime 
 import mysql.connector
+import json     # for parsing JSON file content
 
 app = Flask(__name__)
 
@@ -214,6 +215,93 @@ def get_weight():
     except Exception as e:
         print("Error fetching weights:", e)
         return "Failure", 500
+
+
+# helper function for Post /batch-weight
+"""
+    Processes CSV content line-by-line, extracts container_id, weight, and unit,
+    and inserts or updates them in the containers_registered table.
+"""
+def process_csv(content, conn):
+    cursor = conn.cursor()
+    for line in content.strip().split('\n'):
+        parts = line.strip().split(',')
+        if len(parts) != 2:
+            continue  # skip invalid lines
+
+        cid, value_unit = parts
+        cid = cid.strip()
+        value_unit = value_unit.strip().lower()
+
+        # Determine the unit and extract the numeric value
+        if value_unit.endswith('kg'):
+            unit = 'kg'
+            value = value_unit[:-2]
+        elif value_unit.endswith('lbs'):
+            unit = 'lbs'
+            value = value_unit[:-3]
+        else:
+            raise ValueError(f"Missing or unsupported unit in line: {line}")
+
+        # Insert or update the record in the table
+        cursor.execute("""
+            INSERT OR REPLACE INTO containers_registered (container_id, weight, unit)
+            VALUES (?, ?, ?)
+        """, (cid, int(float(value)), unit))
+
+# helper function for Post /batch-weight
+"""
+    Processes a JSON list of container objects and stores them in the database.
+    Each object should contain: id, weight, and unit.
+"""
+def process_json(content, conn):
+    cursor = conn.cursor()
+    data = json.loads(content)
+
+    for entry in data:
+        cid = entry.get("id")
+        weight = entry.get("weight")
+        unit = entry.get("unit")
+
+        if not cid or weight is None or not unit:
+            raise ValueError(f"Missing fields in entry: {entry}")
+
+        cursor.execute("""
+            INSERT OR REPLACE INTO containers_registered (container_id, weight, unit)
+            VALUES (?, ?, ?)
+        """, (cid.strip(), int(float(weight)), unit.lower()))
+   
+"""
+    Uploads a .csv or .json file to register multiple containers in the database.
+"""   
+@app.route('/batch-weight', methods=['POST'])
+def batch_weight():
+    file = request.files.get('file')  # get uploaded file from form-data
+    if not file:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    try:
+        content = file.read().decode("utf-8")  # decode file content
+        conn = get_db_connection()  # connect to the database
+
+        # Process based on file extension
+        if file.filename.endswith('.csv'):
+            process_csv(content, conn)
+        elif file.filename.endswith('.json'):
+            process_json(content, conn)
+        else:
+            return jsonify({"error": "Unsupported file format. Use .csv or .json"}), 400
+
+        conn.commit()  # save all changes to DB
+        return jsonify({"message": "Containers saved successfully"}), 201
+
+    except ValueError as ve:
+        print("ValueError:", ve) #debug
+        return jsonify({"error": str(ve)}), 400
+    except Exception as e:
+        print("Exception:", e) #debug
+        return jsonify({"error": f"Failed to process file: {str(e)}"}), 400
+
 
 
 if __name__ == "__main__":
