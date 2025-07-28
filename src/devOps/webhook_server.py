@@ -66,7 +66,7 @@ def OnPushWBTeam(payload):
     time_now = datetime.datetime.now().isoformat()
     commits = payload.get("commits", [])
 
-    log_path = f"/log/{branch}.log"
+    log_path = f"/var/log/ci/{branch}.log"
     os.makedirs("/log", exist_ok=True)
 
     with open(log_path, "a") as log:

@@ -2,7 +2,7 @@
 
 BRANCH=$1
 REPO_PATH="/home/ubuntu/myrepo"
-LOG_FILE="/log/${BRANCH}.log"
+LOG_FILE="/var/log/ci/${BRANCH}.log"
 
 echo "[Runner] Starting test for branch: $BRANCH" >> $LOG_FILE
 cd "$REPO_PATH"
