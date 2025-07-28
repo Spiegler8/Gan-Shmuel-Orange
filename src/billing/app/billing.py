@@ -2,6 +2,7 @@ from flask import Flask, render_template, jsonify, request
 from datetime import datetime
 import mysql.connector
 import os
+import requests
 
 app = Flask(__name__)
 
@@ -192,6 +193,59 @@ def update_truck(id):
             cursor.close()
         if conn:
             conn.close()
+
+
+@app.route("/truck/<string:truck_id>", methods=["GET"])
+def get_truck_details(truck_id):
+    from_ts = request.args.get("from")
+    to_ts = request.args.get("to")
+
+    conn = None
+    cursor = None
+
+    try:
+        conn = mysql.connector.connect(**mysql_config)
+        cursor = conn.cursor(dictionary=True)
+
+        # Check if the truck is registered
+        cursor.execute("SELECT * FROM Trucks WHERE id = %s", (truck_id,))
+        truck = cursor.fetchone()
+        if not truck:
+            return jsonify({"error": "Truck not found"}), 404
+
+        # Fetch weight sessions from Weight system (external API)
+        weight_url = f"http://weight:5000/item/{truck_id}"
+        params = {}
+        if from_ts:
+            params["from"] = from_ts
+        if to_ts:
+            params["to"] = to_ts
+
+        weight_response = requests.get(weight_url, params=params)
+        if weight_response.status_code != 200:
+            return jsonify({"error": "Failed to fetch from weight system"}), 500
+
+        weight_data = weight_response.json()
+
+        return jsonify({
+            "id": truck_id,
+            "tara": weight_data.get("tara", "na"),
+            "sessions": weight_data.get("sessions", [])
+        })
+
+    except mysql.connector.Error as err:
+        print("DB Error:", err)
+        return jsonify({'error': 'Internal DB error'}), 500
+
+    except Exception as e:
+        print("Error:", e)
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()                 
 
 
 if __name__ == '__main__':

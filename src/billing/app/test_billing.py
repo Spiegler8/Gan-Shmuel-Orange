@@ -1,7 +1,8 @@
 import pytest
 from billing import app
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, Mock
 
+#----------------- testing POST /provider ----------------------
 @pytest.fixture
 def client():
     app.testing = True
@@ -36,6 +37,7 @@ def test_new_provider_reserved_name(client):
     assert response.get_json()["error"] == "Invalid provider name"
 
 
+#------------------------------- testing PUT /truck   -------------------------------------------
 def test_update_truck_success(client):
     with patch("billing.mysql.connector.connect") as mock_connect:
         # Setup mocks
@@ -89,3 +91,80 @@ def test_update_truck_missing_data(client):
     response = client.put("/truck/1", json={})
     assert response.status_code == 400
     assert response.get_json() == {'error': 'Missing provider'}
+
+#------------------------testing GET/ truck/id----------------------
+import json
+
+@patch('billing.mysql.connector.connect')
+@patch('requests.get')
+def test_get_truck_details_success(mock_requests_get, mock_mysql_connect, client):
+    # Mock MySQL connection and cursor
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_mysql_connect.return_value = mock_conn
+    mock_conn.cursor.return_value = mock_cursor
+
+    # Return dict exactly like your real DB row for the truck
+    mock_cursor.fetchone.return_value = {
+        "id": "123-456",
+        "provider_id": 10001
+    }
+
+    # Mock external API
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "tara": 1200,
+        "sessions": [
+            {"timestamp": "2024-07-01T10:00:00Z", "weight": 1500},
+            {"timestamp": "2024-07-01T12:00:00Z", "weight": 1600}
+        ]
+    }
+    mock_requests_get.return_value = mock_response
+
+    # Call route
+    response = client.get("/truck/123-456")
+
+    # Add debugging
+    print(f"Response status: {response.status_code}")
+    print(f"Response data: {response.data.decode()}")
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["id"] == "123-456"
+    assert data["tara"] == 1200
+    assert len(data["sessions"]) == 2
+
+@patch('billing.mysql.connector.connect')
+def test_get_truck_not_found(mock_mysql_connect, client):
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_mysql_connect.return_value = mock_conn
+    mock_conn.cursor.return_value = mock_cursor
+    
+    # Simulate truck not found
+    mock_cursor.fetchone.return_value = None
+    
+    response = client.get("/truck/nonexistent-id")
+    
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "Truck not found"}    
+
+
+@patch('billing.mysql.connector.connect')
+@patch('requests.get')
+def test_get_truck_weight_api_failure(mock_requests_get, mock_mysql_connect, client):
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_mysql_connect.return_value = mock_conn
+    mock_conn.cursor.return_value = mock_cursor
+    mock_cursor.fetchone.return_value = {"id": "123-456", "provider_id": 10001}
+
+    # External API returns error
+    mock_response = Mock()
+    mock_response.status_code = 500
+    mock_requests_get.return_value = mock_response
+
+    response = client.get("/truck/123-456")
+    assert response.status_code == 500
+    assert response.get_json() == {"error": "Failed to fetch from weight system"}
