@@ -218,10 +218,51 @@ def get_weight():
     except Exception as e:
         print("Error fetching weights:", e)
         return jsonify({"error": "Database query failed"}), 500
-    
     finally:
         if cursor: cursor.close()
         if conn: conn.close()   
+
+@app.route("/session/<int:session_id>", methods=["GET"])
+def get_session(session_id):
+    conn = None
+    cursor = None
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Fetch the session details
+        cursor.execute("""
+            SELECT id, direction, truck, bruto, truckTara, neto 
+            FROM transactions 
+            WHERE id = %s
+        """, (session_id,))
+        
+        # Fetch the first result (and only one)
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({"error": f"Session with id {session_id} not found"})
+        
+        # Always return truckTara and neto
+        session_data = {
+            "id": row["id"],
+            "truck": row["truck"],
+            "bruto": row["bruto"]
+        }
+
+        # Include truckTara and neto only for "out"
+        if row["direction"] == "out":
+            session_data["truckTara"] = row["truckTara"]
+            session_data["neto"] = row["neto"] if row["neto"] is not None else "na"
+
+        return jsonify(session_data), 200
+    
+    except Exception as e:
+        print("Error fetching session:", e)
+        return jsonify({"error": "Database query failed"}), 500
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 
 
