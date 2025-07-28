@@ -192,12 +192,12 @@ def get_weight():
         cursor = conn.cursor(dictionary=True)
 
         placeholders = ",".join(["%s"] * len(filters))
-        query = """
-            SELECT id, direction, bruto,neto, produce, containers
-            FROM weights
-            WHERE timestamp >= %s AND timestamp <= %s
-            AND direction IN (%s)
-            """ % ({placeholders})
+        query = f"""
+            SELECT id, direction, bruto, neto, produce, containers
+            FROM transactions
+            WHERE datetime >= %s AND datetime <= %s
+            AND direction IN ({placeholders})
+            """
 
         params = [t1,t2] + filters
         cursor.execute(query, params)
@@ -214,6 +214,8 @@ def get_weight():
     except Exception as e:
         print("Error fetching weights:", e)
         return "Failure", 500
+
+
 
 
 if __name__ == "__main__":
