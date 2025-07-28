@@ -66,7 +66,7 @@ def OnPushWBTeam(payload):
     time_now = datetime.datetime.now().isoformat()
     commits = payload.get("commits", [])
 
-    log_path = f"/var/log/ci/{branch}.log"
+    log_path = f"/log/{branch}.log"
     os.makedirs("/log", exist_ok=True)
 
     with open(log_path, "a") as log:
@@ -140,7 +140,7 @@ def push_webhook():
 
     print(f"[+] Push to branch: {branch}")
 
-    if branch in ["billing-main", "weight-main", "main-devops"]:
+    if branch in ["billing-main", "weight-main"]:
         print("[+] Dev Team push detected — calling OnPushDevTeam")
         OnPushWBTeam(data)
         return "Dev Team push handled", 200
