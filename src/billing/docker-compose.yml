@@ -13,6 +13,7 @@ services:
       - DB_NAME=billdb
     volumes:
       - ./app:/app
+      - ./in:/in 
     working_dir: /app
     command: python billing.py
   db:

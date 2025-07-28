@@ -2,6 +2,8 @@ from flask import Flask, render_template, jsonify, request
 from datetime import datetime
 import mysql.connector
 import os
+import pandas as pd
+import glob
 
 app = Flask(__name__)
 
@@ -34,10 +36,25 @@ def root():
 
 @app.route('/health', methods=['GET'])
 def health():
+    conn = None
+    cursor = None
     try:
-        return "OK", 200
+        conn = mysql.connector.connect(**mysql_config)
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1;")
+        result = cursor.fetchone()
+        if result and result[0] == 1:
+            return "OK", 200
+        else:
+            return "Failure", 500
     except:
         return "Failure", 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 
 @app.route("/provider", methods=["POST"])
 def new_provider():
@@ -108,6 +125,69 @@ def update_provider_name(id):
             cursor.close()
         if conn:
             conn.close()
+
+
+@app.route('/rates', methods=['POST'])
+def upload_rates():
+    excel_files = glob.glob("/in/*.xlsx")  # direct path, no need to define UPLOAD_FOLDER
+
+    if not excel_files:
+        return jsonify({"message": "No Excel files found in /app/in"}), 400
+
+    updated_rows = 0
+    inserted_rows = 0
+    conn = None
+    cursor = None
+
+    try:
+        conn = mysql.connector.connect(**mysql_config)
+        cursor = conn.cursor()
+
+        for path in excel_files:
+            df = pd.read_excel(path)
+
+            for _, row in df.iterrows():
+                product = str(row['Product']).strip()
+                rate = int(row['Rate'])
+                scope = str(row['Scope']).strip().upper()
+
+                cursor.execute(
+                    "SELECT rate FROM Rates WHERE product_id = %s AND UPPER(scope) = %s",
+                    (product, scope)
+                )
+                result = cursor.fetchone()
+
+                if result:
+                    existing_rate = result[0]
+                    if existing_rate != rate:
+                        cursor.execute(
+                            "UPDATE Rates SET rate = %s WHERE product_id = %s AND scope = %s",
+                            (rate, product, scope)
+                        )
+                        updated_rows += 1
+                else:
+                    cursor.execute(
+                        "INSERT INTO Rates (product_id, rate, scope) VALUES (%s, %s, %s)",
+                        (product, rate, scope)
+                    )
+                    inserted_rows += 1
+
+        conn.commit()
+        return jsonify({
+            "message": "Rates processed from Excel files",
+            "updated": updated_rows,
+            "inserted": inserted_rows
+        })
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 
 
 @app.route('/truck', methods=['POST'])
@@ -192,6 +272,7 @@ def update_truck(id):
             cursor.close()
         if conn:
             conn.close()
+
 
 
 if __name__ == '__main__':
