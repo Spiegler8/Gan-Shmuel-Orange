@@ -140,7 +140,7 @@ def push_webhook():
 
     print(f"[+] Push to branch: {branch}")
 
-    if branch in ["billing-main", "weight-main"]:
+    if branch in ["billing-main", "weight-main", "main-devops"]:
         print("[+] Dev Team push detected — calling OnPushDevTeam")
         OnPushWBTeam(data)
         return "Dev Team push handled", 200
