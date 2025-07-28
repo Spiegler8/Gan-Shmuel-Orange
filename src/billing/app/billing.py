@@ -45,7 +45,7 @@ def new_provider():
     if not data or 'name' not in data:
         return jsonify({'error': 'Missing provider name'}), 400
     provider = data['name']
-    if provider == "health":
+    if provider == "health" or not provider:
         return {"error": "Invalid provider name"}, 400
 
     conn = None
@@ -156,7 +156,11 @@ def update_truck(id):
         return jsonify({'error': 'Missing provider'}), 400
     
     truck_id = data['id']
-
+    try:
+        truck_id = int(truck_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Invalid truck id'}), 400
+    
     conn = None
     cursor = None
     try:
