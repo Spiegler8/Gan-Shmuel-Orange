@@ -1,0 +1,37 @@
+  <html>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script>
+    function room() {
+      var room = window.location.href.substring(window.location.href.lastIndexOf('/')+1);
+      if (room=='') room = 'general';
+      return "/api/chat/"+room;
+    }
+
+    function updateChat() {
+      $.get(room(),function(data) {
+        $("#chatbox").text(data);
+        window.setTimeout(updateChat,1500);
+      })
+    }
+
+    function sendmessage() {
+      $.post( room(), $( "#inform" ).serialize() );
+    }
+
+    $(document).ready(function() {
+      $("#chatbox").text("Loading chat...");
+      $("#sendBtn").click(sendmessage)
+      window.setTimeout(updateChat,1500);
+    });
+
+  </script>
+  <body>
+    <form id="inform" action="/api/chat" method="POST">
+      User name:<input name="username" type=text>
+      message:<input name="msg" type=text>
+      <input id="sendBtn" type="button" value="send">
+    </form>
+    <pre id="chatbox">Loading...</pre>
+  <script defer src="https://static.cloudflareinsights.com/beacon.min.js/vcd15cbe7772f49c399c6a5babf22c1241717689176015" integrity="sha512-ZpsOmlRQV6y907TI0dKBHq9Md29nnaEIPlkf84rnaERnq6zvWvPUqr2ft8M1aS28oN72PdrCzSjY4U6VaAw1EQ==" data-cf-beacon='{"version":"2024.11.0","token":"a277335336dc427bbb3bf6f09bed1747","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
