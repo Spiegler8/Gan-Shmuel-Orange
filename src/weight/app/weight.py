@@ -267,6 +267,74 @@ def get_session(session_id):
         if cursor: cursor.close()
         if conn: conn.close()
 
+@app.route("/item/<string:item_id>", methods=["GET"])
+def get_item(item_id):
+    t1 = request.args.get("from")
+    t2 = request.args.get("to")
+
+    # If the user didn’t send from, set it to today at midnight
+    if not t1:
+        first_of_month = datetime.now().replace(day=1, hour=0, minute=0, second=0)
+        t1 = first_of_month.strftime("%Y%m%d%H%M%S")
+    
+    # If the user didn’t send to, set it to now
+    if not t2:
+        t2 = datetime.now().strftime("%Y%m%d%H%M%S")
+
+    conn = None
+    cursor = None
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+                       SELECT id, truck, truckTara, containers
+                       FROM transactions
+                       WHERE datetime >= %s AND datetime <= %s
+                       AND (truck = %s OR FIND_IN_SET(%s, containers))
+                       """, (t1, t2, item_id, item_id))
+        rows = cursor.fetchall()
+
+        # No results found
+        if not rows:
+            return jsonify({"error": f"No records found for item {item_id}"}), 404
+        
+        # Lists of all transaction IDs (sessions) that involve this item.
+        sessions = [row["id"] for row in rows]
+
+        tara = "na"
+
+        # If the item is a truck
+        trucks = [r for r in rows if r["truck"] == item_id]
+        if trucks:
+            # Last known truck tara
+            for row in reversed(trucks):
+                if row["truckTara"] is not None:
+                    tara = row["truckTara"]
+                    break
+
+        # If the item is a container
+        else:
+            cursor.execute("""
+                        SELECT weight FROM containers_registered WHERE container_ID = %s  
+                        """, (item_id,))
+            container_row = cursor.fetchone()
+            if container_row and container_row["weight"] is not None:
+                tara = container_row["weight"]
+        
+        return jsonify({
+            "id": item_id,
+            "tara": tara,
+            "sessions": sessions
+        }), 200
+    
+    except Exception as e:
+        print("Error fetching item:", e)
+        return jsonify({"error": "Database query failed"}), 500
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
 
 
 
