@@ -178,9 +178,6 @@ def record_weight():
         if conn: conn.close()
 
  # ----POST weight endpoint end----            
-
-# @app.route("/weight", methods=["POST"])
-# def record_weight():
     conn = None
     try:
         # Get database connection
