@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Weight System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+    /* Tabs text color and active tab background */
+    .nav-tabs .nav-link {
+        color: #4F7942 !important;
+    }
+    .nav-tabs .nav-link.active {
+        color: white !important;
+        background-color: #4F7942 !important;
+    }
+
+    /* Buttons color */
+    .btn-primary {
+        background-color: #4F7942 !important;
+        border-color: #4F7942 !important;
+    }
+    .btn-primary:hover {
+        background-color: #3d5f33 !important; /* Slightly darker shade */
+        border-color: #3d5f33 !important;
+    }
+</style>
+
+
+
+</head>
+<body class="p-4">
+    <div class="container">
+        <h1 class="mb-4">Weight System</h1>
+
+        <!-- Bootstrap Tabs -->
+        <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#home">🏠 Home</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab1">POST /weight</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab2">GET /weight</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab3">GET /item</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab4">GET /session</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab5">GET /unknown</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab6">POST /batch-weight</a></li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content border border-top-0 p-3">
+            <!-- HOME -->
+            <div class="tab-pane fade show active" id="home">
+                <h3>Welcome</h3>
+                <p>
+                    This is the <strong>Weight System</strong> of Gan Shmuel
+                    <span style="font-size: 1.5em;">🌳</span>
+                </p>
+                <p>
+                    Here are the available endpoints:
+                    <ul>
+                        <li><strong>POST /weight</strong>: Add new weight session</li>
+                        <li><strong>GET /weight</strong>: View weight sessions</li>
+                        <li><strong>GET /item</strong>: Lookup truck or container by ID</li>
+                        <li><strong>GET /session</strong>: Lookup session by ID</li>
+                        <li><strong>GET /unknown</strong>: Find unknown containers</li>
+                        <li><strong>POST /batch-weight</strong>: Upload container weights (CSV/JSON)</li>
+                    </ul>
+                    Use the tabs above to access each API endpoint form.
+                </p>
+            </div>
+            <!-- POST /weight -->
+            <div class="tab-pane fade" id="tab1">
+                <h3>POST /weight</h3>
+                <form id="weightForm" class="mb-3">
+                    <input class="form-control mb-2" type="text" name="truck" placeholder="Truck">
+                    <input class="form-control mb-2" type="number" name="weight" placeholder="Weight" required>
+                    <select class="form-control mb-2" name="direction">
+                        <option value="in">In</option>
+                        <option value="out">Out</option>
+                        <option value="none">None</option>
+                    </select>
+                    <input class="form-control mb-2" type="text" name="containers" placeholder="Containers (comma-separated)">
+                    <input class="form-control mb-2" type="text" name="produce" placeholder="Produce">
+                    <select class="form-control mb-2" name="force">
+                        <option value="false">Force = False</option>
+                        <option value="true">Force = True</option>
+                    </select>
+                    <button class="btn btn-primary" type="submit">Submit</button>
+                </form>
+                <div id="weightResult"></div>
+            </div>
+
+            <!-- GET /weight -->
+            <div class="tab-pane fade" id="tab2">
+                <h3>GET /weight</h3>
+                <form id="getWeightForm" class="mb-3">
+                    <input class="form-control mb-2" type="text" name="from" placeholder="From (yyyymmddhhmmss)">
+                    <input class="form-control mb-2" type="text" name="to" placeholder="To (yyyymmddhhmmss)">
+                    <input class="form-control mb-2" type="text" name="filter" value="in,out,none">
+                    <button class="btn btn-primary" type="submit">Fetch</button>
+                </form>
+                <div id="getWeightTable"></div>
+            </div>
+
+            <!-- GET /item -->
+            <div class="tab-pane fade" id="tab3">
+                <h3>GET /item/&lt;id&gt;</h3>
+                <form id="itemForm" class="mb-3">
+                    <input class="form-control mb-2" type="text" name="id" placeholder="Item ID" required>
+                    <input class="form-control mb-2" type="text" name="from" placeholder="From (optional)">
+                    <input class="form-control mb-2" type="text" name="to" placeholder="To (optional)">
+                    <button class="btn btn-primary" type="submit">Fetch</button>
+                </form>
+                <div id="itemTable"></div>
+            </div>
+
+            <!-- GET /session -->
+            <div class="tab-pane fade" id="tab4">
+                <h3>GET /session/&lt;id&gt;</h3>
+                <form id="sessionForm" class="mb-3">
+                    <input class="form-control mb-2" type="number" name="id" placeholder="Session ID" required>
+                    <button class="btn btn-primary" type="submit">Fetch</button>
+                </form>
+                <div id="sessionTable"></div>
+            </div>
+
+            <!-- GET /unknown -->
+            <div class="tab-pane fade" id="tab5">
+                <h3>GET /unknown</h3>
+                <button id="unknownBtn" class="btn btn-primary mb-3">Fetch Unknown Containers</button>
+                <div id="unknownTable"></div>
+            </div>
+
+            <!-- POST /batch-weight -->
+            <div class="tab-pane fade" id="tab6">
+                <h3>POST /batch-weight</h3>
+                <form id="batchForm" enctype="multipart/form-data" class="mb-3">
+                    <input class="form-control mb-2" type="file" name="file" required>
+                    <button class="btn btn-primary" type="submit">Upload</button>
+                </form>
+                <div id="batchResult"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Helper: render object as table
+        function renderObjectAsTable(obj) {
+            let html = "<table class='table table-bordered'>";
+            for (const key in obj) {
+                html += `<tr><th>${key}</th><td>${Array.isArray(obj[key]) ? obj[key].join(", ") : obj[key]}</td></tr>`;
+            }
+            html += "</table>";
+            return html;
+        }
+
+        // POST /weight
+        document.getElementById("weightForm").addEventListener("submit", async e => {
+            e.preventDefault();
+            const data = Object.fromEntries(new FormData(e.target).entries());
+            data.force = data.force === "true";
+            const res = await fetch("/weight", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(data)
+            });
+            document.getElementById("weightResult").innerHTML = renderObjectAsTable(await res.json());
+        });
+
+        // GET /weight
+        document.getElementById("getWeightForm").addEventListener("submit", async e => {
+            e.preventDefault();
+            const params = new URLSearchParams(new FormData(e.target)).toString();
+            const res = await fetch("/weight?" + params);
+            const data = await res.json();
+            const div = document.getElementById("getWeightTable");
+            if (Array.isArray(data)) {
+                let html = "<table class='table table-bordered'><tr><th>ID</th><th>Direction</th><th>Bruto</th><th>Neto</th><th>Produce</th><th>Containers</th></tr>";
+                data.forEach(row => {
+                    html += `<tr>
+                        <td>${row.id}</td>
+                        <td>${row.direction}</td>
+                        <td>${row.bruto}</td>
+                        <td>${row.neto}</td>
+                        <td>${row.produce}</td>
+                        <td>${row.containers.join(", ")}</td>
+                    </tr>`;
+                });
+                html += "</table>";
+                div.innerHTML = html;
+            } else {
+                div.innerHTML = renderObjectAsTable(data);
+            }
+        });
+
+        // GET /item/<id>
+        document.getElementById("itemForm").addEventListener("submit", async e => {
+            e.preventDefault();
+            const form = new FormData(e.target);
+            const id = form.get("id");
+            form.delete("id");
+            const params = new URLSearchParams(form).toString();
+            const res = await fetch(`/item/${id}?${params}`);
+            document.getElementById("itemTable").innerHTML = renderObjectAsTable(await res.json());
+        });
+
+        // GET /session/<id>
+        document.getElementById("sessionForm").addEventListener("submit", async e => {
+            e.preventDefault();
+            const id = new FormData(e.target).get("id");
+            const res = await fetch(`/session/${id}`);
+            document.getElementById("sessionTable").innerHTML = renderObjectAsTable(await res.json());
+        });
+
+        // GET /unknown
+        document.getElementById("unknownBtn").addEventListener("click", async () => {
+            const res = await fetch("/unknown");
+            const data = await res.json();
+            const div = document.getElementById("unknownTable");
+            if (Array.isArray(data)) {
+                let html = "<table class='table table-bordered'><tr><th>Unknown Containers</th></tr>";
+                data.forEach(id => { html += `<tr><td>${id}</td></tr>`; });
+                html += "</table>";
+                div.innerHTML = html;
+            } else {
+                div.innerHTML = renderObjectAsTable(data);
+            }
+        });
+
+        // POST /batch-weight
+        document.getElementById("batchForm").addEventListener("submit", async e => {
+            e.preventDefault();
+            const res = await fetch("/batch-weight", {
+                method: "POST",
+                body: new FormData(e.target)
+            });
+            document.getElementById("batchResult").innerHTML = renderObjectAsTable(await res.json());
+        });
+    </script>
+</body>
+</html>

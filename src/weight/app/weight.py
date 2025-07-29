@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 from flask import Flask, request, jsonify
 from io import StringIO
+from flask import render_template # the ui
 
 app = Flask(__name__)
 
@@ -487,6 +488,13 @@ def get_unknown():
     finally:
         cursor.close()
         conn.close()
+
+
+# UI route to serve the frontend
+@app.route("/ui")
+def ui():
+    return render_template("index.html")
+
 
 
 if __name__ == "__main__":
