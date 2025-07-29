@@ -326,7 +326,29 @@ def get_truck_details(truck_id):
         if cursor:
             cursor.close()
         if conn:
-            conn.close()                 
+            conn.close() 
+
+from flask import send_file
+
+@app.route('/rates', methods=['GET'])
+def download_rates():
+    try:
+        # Find the first .xlsx file in the /in directory
+        files = glob.glob("/in/*.xlsx")
+        if not files:
+            return jsonify({"error": "No Excel file found"}), 404
+
+        file_path = files[0]  # You can extend to support multiple later
+
+        return send_file(
+            file_path,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name='rates_file.xlsx'
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 
 if __name__ == '__main__':
