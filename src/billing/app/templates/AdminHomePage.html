@@ -201,7 +201,7 @@
       fetch("/truck", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: truckId, provider_id: providerId })
+        body: JSON.stringify({ id: truckId, provider: providerId })
       })
       .then(res => res.text())
       .then(text => displayOutput(text))
