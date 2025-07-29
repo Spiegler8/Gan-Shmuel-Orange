@@ -1,14 +1,11 @@
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
 from flask import Flask, render_template, jsonify, request
 from datetime import datetime
+from flask import send_file
 import mysql.connector
 import requests
 import pandas as pd
 import glob
+import os
 
 
 app = Flask(__name__)
@@ -334,7 +331,6 @@ def get_truck_details(truck_id):
         if conn:
             conn.close() 
 
-from flask import send_file
 
 @app.route('/rates', methods=['GET'])
 def download_rates():
