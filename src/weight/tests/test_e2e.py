@@ -1,8 +1,9 @@
+import os
 import requests
 import time
-import os
 
 BASE_URL = os.getenv("BASE_URL", "http://localhost:5000")
+
 
 def wait_for_service():
     for _ in range(30):
@@ -14,6 +15,7 @@ def wait_for_service():
             pass
         time.sleep(2)
     raise RuntimeError("Service not ready")
+
 
 def test_00_service_up():
     wait_for_service()

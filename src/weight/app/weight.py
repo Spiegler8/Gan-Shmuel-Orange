@@ -4,8 +4,8 @@ import mysql.connector
 import os
 from datetime import datetime
 from flask import Flask, request, jsonify
+from flask import render_template  # the ui
 from io import StringIO
-from flask import render_template # the ui
 
 app = Flask(__name__)
 
@@ -460,11 +460,11 @@ def batch_weight():
             conn.close()
 
 
-"""
-Returns a list of all recorded containers that have unknown weight
-"""
 @app.route('/unknown', methods=['GET'])
 def get_unknown():
+    """
+    Returns a list of all recorded containers that have unknown weight
+    """
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -500,7 +500,6 @@ def get_unknown():
 @app.route("/weight-system")
 def ui():
     return render_template("index.html")
-
 
 
 if __name__ == "__main__":

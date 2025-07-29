@@ -223,8 +223,8 @@ class WeightServiceTests(unittest.TestCase):
         mock_db.return_value = self.mock_conn
         self.mock_cursor.fetchone.return_value = None
         resp = self.client.get("/session/99")
-        self.assertEqual(resp.status_code, 200)
-        self.assertIn("not found", resp.data.decode())
+        self.assertEqual(resp.status_code, 404)
+        self.assertIn("no records found for session 99", resp.data.decode().lower())
 
     # ------------------------- GET /item -------------------------
 
