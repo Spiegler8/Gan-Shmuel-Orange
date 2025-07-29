@@ -4,6 +4,20 @@ BRANCH="$1" # arg
 REPO_URL="https://github.com/Spiegler8/Gan-Shmuel-Orange.git"  # 🔁 Replace with your real URL
 TMP_DIR="/tmp/ci_run_$(date +%s)"
 
+#shouldnt be here !!
+# Load Slack webhook from env file
+source ~/slack.env
+# Function to send Slack message
+send_slack_msg() {
+  local msg="$1"
+  curl -X POST -H 'Content-type: application/json' \
+    --data "{\"text\":\"$msg\"}" \
+    "$CI_BOT_CHANNEL"
+}
+# Send start message
+send_slack_msg "*[CI]* :wave: Hello from run_tests.sh on branch *$BRANCH*"
+
+
 echo "[CI] 🚀 Starting CI for branch: $BRANCH" #log
 
 # Clone the repo
@@ -25,6 +39,10 @@ elif [[ "$BRANCH" == "weight-main" ]]; then
     SERVICE_DIR="Weight-Team"
     COMPOSE_FILE="docker-compose.yml"
     CONTAINER_NAME="weight_app" #name convantion , service or container ?
+elif [[ "$BRANCH" == "main-devops" ]]; then 
+	SERVICE_DIR="billing_team"
+    COMPOSE_FILE="docker-compose.yml"
+    CONTAINER_NAME="billing_app" # name convantion , service or container ?
 else
     echo "[CI] ℹ️ No CI action needed for branch: $BRANCH"
     rm -rf "$TMP_DIR"
