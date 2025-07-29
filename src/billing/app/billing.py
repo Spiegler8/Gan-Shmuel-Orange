@@ -204,23 +204,6 @@ def upload_rates():
         if conn:
             conn.close()
 
-@app.route('/rates', methods=['GET'])
-def download_rates():
-    try:
-        files = glob.glob("/in/*.xlsx")        
-        if not files:
-            return jsonify({"error": "No Excel file found"}), 404
-        
-        file_path = files[0]
-        return send_file(
-            file_path,
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            as_attachment=True,
-            download_name='rates_file.xlsx'
-        )
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 
 
 @app.route("/truck", methods=["POST"])
@@ -268,14 +251,10 @@ def register_truck():
 def update_truck(id):
     data = request.get_json()
 
-    if not data:
-        return jsonify({"error": "Missing provider"}), 400
+    if not data or "provider_id" not in data:
+        return jsonify({"error": "Missing provider_id"}), 400
 
-    truck_id = data["id"]
-    try:
-        truck_id = int(truck_id)
-    except (ValueError, TypeError):
-        return jsonify({"error": "Invalid truck id"}), 400
+    provider_id = data["provider_id"]  # ✅ this is the only data you need
 
     conn = None
     cursor = None
@@ -287,17 +266,20 @@ def update_truck(id):
         cursor.execute("SELECT id FROM Trucks WHERE id = %s", (id,))
         if not cursor.fetchone():
             return jsonify({"error": "Truck not found"}), 404
+
         # Check if provider exists
-        cursor.execute("SELECT id FROM Provider WHERE id = %s", (truck_id,))
+        cursor.execute("SELECT id FROM Provider WHERE id = %s", (provider_id,))
         if not cursor.fetchone():
             return jsonify({"error": "Provider not found"}), 404
+
         # Update truck provider
         cursor.execute(
-            "UPDATE Trucks SET provider_id = %s WHERE id = %s", (truck_id, id)
+            "UPDATE Trucks SET provider_id = %s WHERE id = %s",
+            (provider_id, id)
         )
         conn.commit()
 
-        return jsonify({"message": f"Truck {id} updated successfully"}), 200
+        return jsonify({"message": f"Truck {id} updated to provider {provider_id}"}), 200
 
     except mysql.connector.Error as err:
         return jsonify({"error": str(err)}), 500
@@ -307,6 +289,7 @@ def update_truck(id):
             cursor.close()
         if conn:
             conn.close()
+
 
 
 

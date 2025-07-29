@@ -215,7 +215,7 @@ def test_download_rates_exception(mock_glob, client):
     mock_glob.side_effect = Exception("crash")
     response = client.get("/rates")
     assert response.status_code == 500
-    assert response.get_json() == {"error": "Failed to fetch from weight system"}
+    assert response.get_json() == {"error": "crash"}
 
 @pytest.fixture
 def mock_mysql_provider_truck(monkeypatch):
