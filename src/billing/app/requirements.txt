@@ -16,4 +16,4 @@ Pygments==2.19.2
 pytest==8.4.1
 pyparsing==3.2.3
 magicmock==0.3
-
+requests
