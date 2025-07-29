@@ -497,7 +497,7 @@ def get_unknown():
 
 
 # UI route to serve the frontend
-@app.route("/ui")
+@app.route("/weight-system")
 def ui():
     return render_template("index.html")
 
