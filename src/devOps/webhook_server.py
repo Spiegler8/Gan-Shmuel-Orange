@@ -103,27 +103,6 @@ def home():
     """
     return "hello from flask !"
 
-# @app.route('/pushhook', methods=['POST'])  # Push handler
-# def push_webhook():
-#     """
-#     Handle GitHub push webhook events.
-#     If the push is to the main branches, triggers the test script.
-#     """
-#     signature = request.headers.get("X-Hub-Signature-256")
-#     if not verify_signature(request.data, signature):
-#         return "Invalid signature", 403
-
-#     data = request.json
-#     ref = data.get("ref")  # e.g. 'refs/heads/main'
-#     print(f"[+] Push event detected: {ref}")
-#     if ref == "refs/heads/main":
-#         print("[+] Push to main — running test script...")
-#         subprocess.Popen(
-#             ["bash", "run_tests.sh"])
-#         return "Push script triggered", 200
-
-#     return "Push webhook ignored", 200
-
 @app.route('/pushhook', methods=['POST'])
 def push_webhook():
     """
@@ -141,15 +120,19 @@ def push_webhook():
     print(f"[+] Push to branch: {branch}")
 
     if branch in ["billing-main", "weight-main"]:
-        print("[+] Dev Team push detected — calling OnPushDevTeam")
-        OnPushWBTeam(data)
-        return "Dev Team push handled", 200
+        print(f"[Webhook] CI triggered for {branch}")
+        subprocess.Popen(
+            ["/bin/bash", "./run_tests.sh", branch]
+        )
+        return f"{branch} CI started", 200
 
     elif branch == "dev":
-        print("[+] Dev branch push detected — calling OnPushDevBranch")
-        OnPushDevBranch(data)
-        return "Dev branch push handled", 200
-
+        print(f"[Webhook] CI triggered for {branch}")
+        subprocess.Popen(
+            ["/bin/bash", "./run_team_ci.sh", branch]
+        )
+        return f"{branch} CI started", 200
+        
     print("[~] Push to other branch ignored.")
     return "Push webhook ignored", 200
 
