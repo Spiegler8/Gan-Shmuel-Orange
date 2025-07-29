@@ -1,29 +1,65 @@
 #!/bin/bash
 
-BRANCH=$1
-REPO_PATH="/home/ubuntu/myrepo"
-LOG_FILE="/log/${BRANCH}.log"
+BRANCH="$1" # arg
+REPO_URL="https://github.com/Spiegler8/Gan-Shmuel-Orange.git"  # 🔁 Replace with your real URL
+TMP_DIR="/tmp/ci_run_$(date +%s)"
 
-echo "[Runner] Starting test for branch: $BRANCH" >> $LOG_FILE
-cd "$REPO_PATH"
+echo "[CI] 🚀 Starting CI for branch: $BRANCH" #log
 
-# Fetch latest changes from the branch
-echo "[Runner] Pulling latest $BRANCH..." >> $LOG_FILE
-git fetch origin $BRANCH >> $LOG_FILE 2>&1
-git checkout $BRANCH >> $LOG_FILE 2>&1
-git reset --hard origin/$BRANCH >> $LOG_FILE 2>&1
+# Clone the repo
+echo "[CI] Cloning $BRANCH..."
+git clone --quiet --depth=1 --branch "$BRANCH" "$REPO_URL" "$TMP_DIR"
+if [ $? -ne 0 ]; then
+    echo "[CI] ❌ Clone failed"
+    exit 1
+fi
 
-#git pull repo somehow
-# Navigate to docker-compose location
-cd src/chat || { echo "[Runner] chat/ folder not found" >> $LOG_FILE; exit 1; }
+cd "$TMP_DIR/src" || { echo "[CI] ❌ Missing src dir"; exit 1; }
 
-# Run docker compose up
-echo "[Runner] Running docker-compose up..." >> $LOG_FILE
-docker-compose up -d >> $LOG_FILE 2>&1
+# Select correct service path
+if [[ "$BRANCH" == "billing-main" ]]; then
+    SERVICE_DIR="billing_team"
+    COMPOSE_FILE="docker-compose.yml"
+    CONTAINER_NAME="billing_app" # name convantion , service or container ?
+elif [[ "$BRANCH" == "weight-main" ]]; then
+    SERVICE_DIR="Weight-Team"
+    COMPOSE_FILE="docker-compose.yml"
+    CONTAINER_NAME="weight_app" #name convantion , service or container ?
+else
+    echo "[CI] ℹ️ No CI action needed for branch: $BRANCH"
+    rm -rf "$TMP_DIR"
+    exit 0
+fi
 
-# Simple test: Check if containers are up
-echo "[Runner] Verifying containers..." >> $LOG_FILE
-docker ps --filter "name=chat" --format "{{.Names}}: {{.Status}}" >> $LOG_FILE 2>&1
+cd "$SERVICE_DIR" || { echo "[CI] ❌ Missing $SERVICE_DIR"; exit 1; }
 
-echo "[Runner] Test completed at $(date)" >> $LOG_FILE
+# Start docker-compose
+echo "[CI] 🔧 Running docker-compose up..."
+docker-compose -f "$COMPOSE_FILE" down -v >/dev/null 2>&1
+docker-compose -f "$COMPOSE_FILE" up -d --build >/dev/null 2>&1
 
+if [ $? -ne 0 ]; then
+    echo "[CI] ❌ Docker compose failed"
+    docker-compose -f "$COMPOSE_FILE" down -v >/dev/null 2>&1
+    rm -rf "$TMP_DIR"
+    exit 1
+fi
+
+# Run pytest inside container
+echo "[CI] 🧪 Running pytest in container: $CONTAINER_NAME"
+docker-compose -f "$COMPOSE_FILE" exec -T "$CONTAINER_NAME" pytest tests/
+STATUS=$?
+
+# Cleanup
+echo "[CI] 🧹 Cleaning up..."
+docker-compose -f "$COMPOSE_FILE" down -v >/dev/null 2>&1
+rm -rf "$TMP_DIR"
+
+# Final result
+if [ $STATUS -eq 0 ]; then
+    echo "[CI] ✅ Tests PASSED for $BRANCH"
+else
+    echo "[CI] ❌ Tests FAILED for $BRANCH"
+fi
+
+exit $STATUS
