@@ -9,6 +9,7 @@ from datetime import datetime
 from io import StringIO, BytesIO
 from unittest.mock import patch, MagicMock
 
+# Ensure app import
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'app'))
 
 # Mock the database connection before importing the app
