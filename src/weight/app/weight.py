@@ -446,6 +446,41 @@ def batch_weight():
             conn.close()
 
 
+"""
+Returns a list of all recorded containers that have unknown weight
+"""
+@app.route('/unknown', methods=['GET'])
+def get_unknown():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Get all registered container IDs
+        cursor.execute("SELECT container_id FROM registered_containers")
+        registered = set(row[0] for row in cursor.fetchall())
+
+        # Get all container lists from transactions table
+        cursor.execute("SELECT containers FROM transactions")
+        all_containers = set()
+
+        for (container_str,) in cursor.fetchall():
+            if container_str:
+                containers = [cid.strip() for cid in container_str.split(',')]
+                all_containers.update(containers)
+
+        # Find unregistered containers
+        unknown_containers = all_containers - registered
+
+        return jsonify(sorted(unknown_containers)), 200
+
+    except Exception as e:
+        print("Exception in /unknown:", e)
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
