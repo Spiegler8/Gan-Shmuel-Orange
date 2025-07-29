@@ -115,7 +115,7 @@ def record_weight():
             containers = [c.strip() for c in containers.split(",") if c.strip()]
         containers_str = ",".join(containers)
 
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -199,7 +199,7 @@ def get_weight():
         t1 = datetime.now().strftime("%Y%m%d") + "000000"
     # If the user didn’t send to, set it to now
     if not t2:
-        t2 = datetime.now().strftime("%Y%m%d%H%M%S")
+        t2 = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     try:
         conn = get_db_connection()
@@ -287,11 +287,11 @@ def get_item(item_id):
     # If the user didn’t send from, set it to today at midnight
     if not t1:
         first_of_month = datetime.now().replace(day=1, hour=0, minute=0, second=0)
-        t1 = first_of_month.strftime("%Y%m%d%H%M%S")
+        t1 = first_of_month.strftime("%Y-%m-%d %H:%M:%S")
 
     # If the user didn’t send to, set it to now
     if not t2:
-        t2 = datetime.now().strftime("%Y%m%d%H%M%S")
+        t2 = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     conn = None
     cursor = None
@@ -380,8 +380,11 @@ def process_csv(content, conn):
                 raise ValueError(f"Missing or unsupported unit in line: {','.join(row)}")
 
             cursor.execute("""
-                INSERT OR REPLACE INTO containers_registered (container_id, weight, unit)
+                INSERT INTO containers_registered (container_id, weight, unit)
                 VALUES (%s, %s, %s)
+                ON DUPLICATE KEY UPDATE 
+                    weight = VALUES(weight),
+                    unit = VALUES(unit)
             """, (cid, int(float(value)), unit))
     finally:
         if cursor:
@@ -410,8 +413,11 @@ def process_json(content, conn):
                 raise ValueError(f"Missing fields in entry: {entry}")
 
             cursor.execute("""
-                INSERT OR REPLACE INTO containers_registered (container_id, weight, unit)
+                INSERT INTO containers_registered (container_id, weight, unit)
                 VALUES (%s, %s, %s)
+                ON DUPLICATE KEY UPDATE 
+                    weight = VALUES(weight),
+                    unit = VALUES(unit)
             """, (cid.strip(), int(float(weight)), unit.lower()))
     finally:
         if cursor:
@@ -463,7 +469,7 @@ def get_unknown():
 
     try:
         # Get all registered container IDs
-        cursor.execute("SELECT container_id FROM registered_containers")
+        cursor.execute("SELECT container_id FROM containers_registered")
         registered = set(row[0] for row in cursor.fetchall())
 
         # Get all container lists from transactions table
