@@ -1,7 +1,11 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from flask import Flask, render_template, jsonify, request
 from datetime import datetime
 import mysql.connector
-import os
 import requests
 import pandas as pd
 import glob
