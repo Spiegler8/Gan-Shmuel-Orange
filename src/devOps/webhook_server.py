@@ -127,7 +127,7 @@ def push_webhook():
 
     print(f"[+] Push to branch: {branch}")
 
-    if branch in ["billing-main", "weight-main"]:
+    if branch in ["billing-main", "weight-main", "main-devops"]:
         print(f"[Webhook] CI triggered for {branch}")
         subprocess.Popen(
             ["/bin/bash", "./run_tests.sh", branch]
