@@ -23,20 +23,23 @@ def test_00_service_up():
 
 
 def test_01_post_in_and_out_weight():
-    # 1. IN transaction
+    # 1. IN transaction with force=True (should succeed)
     payload_in = {
         "direction": "in",
         "truck": "TRUCK123",
         "containers": ["C1", "C2"],
         "weight": 10000,
-        "unit": "kg"
+        "unit": "kg",
+        "force": True
     }
     r = requests.post(f"{BASE_URL}/weight", json=payload_in)
     assert r.status_code == 201
     in_id = r.json()["id"]
 
-    # 2. Attempt duplicate in without force (should fail)
-    r2 = requests.post(f"{BASE_URL}/weight", json=payload_in)
+    # 2. Attempt duplicate IN without force (should fail)
+    payload_in_no_force = payload_in.copy()
+    payload_in_no_force.pop("force")  # remove force or set to False
+    r2 = requests.post(f"{BASE_URL}/weight", json=payload_in_no_force)
     assert r2.status_code == 400
 
     # 3. Duplicate in with force
