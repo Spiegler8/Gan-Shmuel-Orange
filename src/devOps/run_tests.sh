@@ -5,8 +5,9 @@ REPO_URL="https://github.com/Spiegler8/Gan-Shmuel-Orange.git"  # 🔁 Replace wi
 TMP_DIR="/tmp/ci_run_$(date +%s)"
 
 #shouldnt be here !!
-# Load Slack webhook from env file
+# Load Slack webhook from env file on EC2
 source ~/slack.env
+
 # Function to send Slack message
 send_slack_msg() {
   local msg="$1"
@@ -15,7 +16,8 @@ send_slack_msg() {
     "$CI_BOT_CHANNEL"
 }
 # Send start message
-send_slack_msg "*[CI]* :wave: Hello from run_tests.sh on branch *$BRANCH*"
+send_slack_msg "*[CI]* 🚀 CI started on branch *$BRANCH*\n👤 Author: *$AUTHOR*\n📝 Commit: _${COMMIT_MSG}_"
+
 
 
 echo "[CI] 🚀 Starting CI for branch: $BRANCH" #log

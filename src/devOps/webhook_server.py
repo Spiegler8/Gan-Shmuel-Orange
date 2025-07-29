@@ -79,7 +79,15 @@ def OnPushWBTeam(payload):
         subprocess.Popen(
             ["/bin/bash", "/host_scripts/run_tests.sh", branch],
             stdout=open(log_path, "a"),
-            stderr=subprocess.STDOUT
+            stderr=subprocess.STDOUT,
+             env={
+                **os.environ,
+                "BRANCH": branch,
+                "PUSHER": pusher,
+                "REPO": repo,
+                "COMMIT_MSG": commit_msg,
+                "AUTHOR": author
+            }
         )
         print(f"[+] DevTeam test started for {branch}")
     except Exception as e:
