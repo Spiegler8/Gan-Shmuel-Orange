@@ -13,6 +13,7 @@ from flask import Flask, request
 import subprocess
 import hmac
 import hashlib
+import os
 
 app = Flask(__name__)
 GITHUB_SECRET = b'supersecret123'  # must match GitHub webhook secret, 
@@ -65,6 +66,7 @@ def OnPushWBTeam(payload):
     repo = payload.get("repository", {}).get("full_name", "unknown")
     time_now = datetime.datetime.now().isoformat()
     commits = payload.get("commits", [])
+    commit_msg = commits[0]["message"] if commits else "No commit message"
 
     log_path = f"/log/{branch}.log"
     os.makedirs("/log", exist_ok=True)
@@ -79,7 +81,7 @@ def OnPushWBTeam(payload):
         subprocess.Popen(
             ["/bin/bash", "/host_scripts/run_tests.sh", branch],
             stdout=open(log_path, "a"),
-            stderr=subprocess.STDOUT
+            stderr=subprocess.STDOUT,
         )
         print(f"[+] DevTeam test started for {branch}")
     except Exception as e:
@@ -107,22 +109,33 @@ def home():
 def push_webhook():
     """
     Handle GitHub push webhook events.
-    React only to billing-main, weight-main, and dev branches.
+    React only to billing-main, weight-main, main-devops, and dev branches.
     """
 
     if not valid_github_signature(request):
         return "Invalid signature", 403
 
     data = request.json
-    ref = data.get("ref", "")  # e.g., 'refs/heads/dev'
-    branch = ref.split("/")[-1]  # Extract 'dev' from 'refs/heads/dev'
+    ref = data.get("ref", "")  # e.g., 'refs/heads/main-devops'
+    branch = ref.split("/")[-1]
+    pusher = data.get("pusher", {}).get("name", "unknown")
+    repo = data.get("repository", {}).get("full_name", "unknown")
+    commits = data.get("commits", [])
+    commit_msg = commits[0]["message"] if commits else "No commit message"
 
     print(f"[+] Push to branch: {branch}")
 
-    if branch in ["billing-main", "weight-main"]:
+    if branch in ["billing-main", "weight-main", "main-devops"]:
         print(f"[Webhook] CI triggered for {branch}")
         subprocess.Popen(
-            ["/bin/bash", "./run_tests.sh", branch]
+            ["/bin/bash", "./run_tests.sh", branch],
+            env={
+                **os.environ,
+                "BRANCH": branch,
+                "PUSHER": pusher,
+                "REPO": repo,
+                "COMMIT_MSG": commit_msg,
+            }
         )
         return f"{branch} CI started", 200
 
@@ -132,7 +145,7 @@ def push_webhook():
             ["/bin/bash", "./run_team_ci.sh", branch]
         )
         return f"{branch} CI started", 200
-        
+
     print("[~] Push to other branch ignored.")
     return "Push webhook ignored", 200
 

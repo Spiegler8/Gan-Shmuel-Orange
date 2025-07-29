@@ -5,20 +5,24 @@ REPO_URL="https://github.com/Spiegler8/Gan-Shmuel-Orange.git"  # 🔁 Replace wi
 TMP_DIR="/tmp/ci_run_$(date +%s)"
 
 #shouldnt be here !!
-# Load Slack webhook from env file
-# source ~/slack.env
-# # Function to send Slack message
-# send_slack_msg() {
-#   local msg="$1"
-#   curl -X POST -H 'Content-type: application/json' \
-#     --data "{\"text\":\"$msg\"}" \
-#     "$CI_BOT_CHANNEL"
-# }
-# # Send start message
-# send_slack_msg "*[CI]* :wave: Hello from run_tests.sh on branch *$BRANCH*"
-# 
-# 
-# echo "[CI] 🚀 Starting CI for branch: $BRANCH" #log
+
+# Load Slack webhook from env file on EC2
+source ~/slack.env
+
+# Function to send Slack message
+send_slack_msg() {
+  local msg="$1"
+  curl -X POST -H 'Content-type: application/json' \
+    --data "{\"text\":\"$msg\"}" \
+    "$CI_BOT_CHANNEL"
+}
+# Send start message
+send_slack_msg "*[CI]* 🚀 CI started on branch *$BRANCH*\n👤 Author: *$PUSHER*\n📝 Commit: _${COMMIT_MSG}_"
+
+
+
+echo "[CI] 🚀 Starting CI for branch: $BRANCH" #log
+>>>>>>> main-devops
 
 # Clone the repo
 echo "[CI] Cloning $BRANCH..."
