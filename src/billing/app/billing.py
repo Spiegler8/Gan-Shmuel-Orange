@@ -9,12 +9,14 @@ import glob
 
 app = Flask(__name__)
 
+
 mysql_config = {
-    'host': os.environ.get('DB_HOST', 'billing_db'),
-    'user': os.environ.get('DB_USER', 'root'),
-    'password': os.environ.get('DB_PASSWORD', 'rootpass'),
-    'database': os.environ.get('DB_NAME', 'billingdb')
+    'host': os.environ['DB_HOST'],
+    'user': os.environ['DB_USER'],
+    'password': os.environ['DB_PASSWORD'],
+    'database': os.environ['DB_NAME']
 }
+
 
 @app.route("/")
 def login():
