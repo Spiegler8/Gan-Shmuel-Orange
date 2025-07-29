@@ -16,4 +16,7 @@ Pygments==2.19.2
 pytest==8.4.1
 pyparsing==3.2.3
 magicmock==0.3
-
+urllib3==2.5.0
+requests==2.32.4
+certifi==2025.7.14
+charset-normalizer==3.4.2
