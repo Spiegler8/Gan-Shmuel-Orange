@@ -256,7 +256,7 @@ def get_session(session_id):
         # Fetch the first result (and only one)
         row = cursor.fetchone()
         if not row:
-            return jsonify({"error": f"Session with id {session_id} not found"})
+            return jsonify({"error": f"No records found for session {session_id}"}), 404
 
         # Always return truckTara and neto
         session_data = {
