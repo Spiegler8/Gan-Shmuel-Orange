@@ -1,6 +1,7 @@
 import pytest
 from billing import app
 from unittest.mock import patch, MagicMock, Mock
+import json
 
 #----------------- testing POST /provider ----------------------
 @pytest.fixture
@@ -93,8 +94,6 @@ def test_update_truck_missing_data(client):
     assert response.get_json() == {'error': 'Missing provider'}
 
 #------------------------testing GET/ truck/id----------------------
-import json
-
 @patch('billing.mysql.connector.connect')
 @patch('requests.get')
 def test_get_truck_details_success(mock_requests_get, mock_mysql_connect, client):
@@ -124,10 +123,6 @@ def test_get_truck_details_success(mock_requests_get, mock_mysql_connect, client
 
     # Call route
     response = client.get("/truck/123-456")
-
-    # Add debugging
-    print(f"Response status: {response.status_code}")
-    print(f"Response data: {response.data.decode()}")
 
     assert response.status_code == 200
     data = response.get_json()
@@ -168,3 +163,112 @@ def test_get_truck_weight_api_failure(mock_requests_get, mock_mysql_connect, cli
     response = client.get("/truck/123-456")
     assert response.status_code == 500
     assert response.get_json() == {"error": "Failed to fetch from weight system"}
+
+
+# ------------------ PUT /provider/<id> ------------------
+@patch("billing.mysql.connector.connect")
+def test_update_provider_success(mock_connect, client):
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_connect.return_value = mock_conn
+    mock_conn.cursor.return_value = mock_cursor
+    mock_cursor.rowcount = 1
+
+    response = client.put("/provider/42", json={"name": "Updated Name"})
+    assert response.status_code == 200
+    assert response.get_json() == {'message': 'Provider 42 updated successfully'}
+
+@patch("billing.mysql.connector.connect")
+def test_update_provider_not_found(mock_connect, client):
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_connect.return_value = mock_conn
+    mock_conn.cursor.return_value = mock_cursor
+    mock_cursor.rowcount = 0
+
+    response = client.put("/provider/99", json={"name": "Any Name"})
+    assert response.status_code == 404
+    assert response.get_json() == {'error': 'Provider not found'}
+
+def test_update_provider_missing_name(client):
+    response = client.put("/provider/10", json={})
+    assert response.status_code == 400
+    assert response.get_json() == {'error': 'Missing provider name'}
+
+
+# ------------------ POST /rates ------------------
+@patch("billing.glob.glob")
+@patch("billing.pd.read_excel")
+@patch("billing.mysql.connector.connect")
+def test_upload_rates_success(mock_connect, mock_read_excel, mock_glob, client):
+    mock_glob.return_value = ["/in/rates.xlsx"]
+    
+    mock_df = MagicMock()
+    mock_df.iterrows.return_value = iter([
+        (0, {"Product": "P1", "Rate": 10, "Scope": "local"}),
+        (1, {"Product": "P2", "Rate": 20, "Scope": "global"}),
+    ])
+    mock_read_excel.return_value = mock_df
+
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_connect.return_value = mock_conn
+    mock_conn.cursor.return_value = mock_cursor
+
+    mock_cursor.fetchone.side_effect = [(10,), None]
+
+    response = client.post("/rates")
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["updated"] == 1
+    assert body["inserted"] == 1
+
+@patch("billing.glob.glob")
+def test_upload_rates_no_file(mock_glob, client):
+    mock_glob.return_value = []
+
+    response = client.post("/rates")
+    assert response.status_code == 400
+    assert response.get_json() == {"message": "No Excel files found in /app/in"}
+
+@patch("billing.glob.glob")
+@patch("billing.pd.read_excel")
+@patch("billing.mysql.connector.connect")
+def test_upload_rates_db_error(mock_connect, mock_read_excel, mock_glob, client):
+    mock_glob.return_value = ["/in/file.xlsx"]
+    mock_df = MagicMock()
+    mock_df.iterrows.return_value = iter([(0, {"Product": "X", "Rate": 10, "Scope": "S"})])
+    mock_read_excel.return_value = mock_df
+
+    mock_connect.side_effect = Exception("MySQL crashed")
+
+    response = client.post("/rates")
+    assert response.status_code == 500
+    assert "error" in response.get_json()
+
+
+# ------------------ GET /rates ------------------
+@patch("billing.glob.glob")
+@patch("billing.send_file")
+def test_download_rates_success(mock_send_file, mock_glob, client):
+    mock_glob.return_value = ["/in/rates.xlsx"]
+    mock_send_file.return_value = "FAKE FILE CONTENT"
+
+    response = client.get("/rates")
+    assert response.status_code == 200
+
+@patch("billing.glob.glob")
+def test_download_rates_no_file(mock_glob, client):
+    mock_glob.return_value = []
+
+    response = client.get("/rates")
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "No Excel file found"}
+
+@patch("billing.glob.glob")
+def test_download_rates_exception(mock_glob, client):
+    mock_glob.side_effect = Exception("Unexpected error")
+
+    response = client.get("/rates")
+    assert response.status_code == 500
+    assert "error" in response.get_json()
