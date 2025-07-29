@@ -5,6 +5,7 @@ import mysql.connector
 import requests
 import pandas as pd
 import glob
+from mysql.connector import errorcode  
 import os
 
 
@@ -203,6 +204,24 @@ def upload_rates():
         if conn:
             conn.close()
 
+@app.route('/rates', methods=['GET'])
+def download_rates():
+    try:
+        files = glob.glob("/in/*.xlsx")        
+        if not files:
+            return jsonify({"error": "No Excel file found"}), 404
+        
+        file_path = files[0]
+        return send_file(
+            file_path,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name='rates_file.xlsx'
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 
 @app.route("/truck", methods=["POST"])
 def register_truck():
@@ -234,7 +253,9 @@ def register_truck():
         return jsonify({"message": "Truck registered successfully"}), 201
 
     except mysql.connector.Error as err:
-        return jsonify({"error": str(err)}), 500
+        if err.errno == errorcode.ER_DUP_ENTRY:
+            return jsonify({'error': 'Truck ID already exists'}), 409
+        return jsonify({'error': str(err)}), 500
 
     finally:
         if cursor:
@@ -288,10 +309,18 @@ def update_truck(id):
             conn.close()
 
 
+
 @app.route("/truck/<string:truck_id>", methods=["GET"])
 def get_truck_details(truck_id):
     from_ts = request.args.get("from")
     to_ts = request.args.get("to")
+
+    # Generate default timestamps if missing
+    now = datetime.now()
+    if not from_ts:
+        from_ts = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).strftime("%Y%m%d%H%M%S")
+    if not to_ts:
+        to_ts = now.strftime("%Y%m%d%H%M%S")
 
     conn = None
     cursor = None
@@ -308,11 +337,10 @@ def get_truck_details(truck_id):
 
         # Fetch weight sessions from Weight system (external API)
         weight_url = f"http://weight:5000/item/{truck_id}"
-        params = {}
-        if from_ts:
-            params["from"] = from_ts
-        if to_ts:
-            params["to"] = to_ts
+        params = {
+            "from": from_ts,
+            "to": to_ts
+        }
 
         weight_response = requests.get(weight_url, params=params)
         if weight_response.status_code != 200:
@@ -340,8 +368,7 @@ def get_truck_details(truck_id):
         if cursor:
             cursor.close()
         if conn:
-            conn.close() 
-
+            conn.close()
 
 @app.route('/rates', methods=['GET'])
 def download_rates():
@@ -479,8 +506,6 @@ def get_bill(provider_id):
             cursor.close()
         if conn:
             conn.close()
-
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=True)
