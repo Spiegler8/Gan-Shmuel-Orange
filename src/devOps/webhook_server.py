@@ -65,6 +65,7 @@ def OnPushWBTeam(payload):
     repo = payload.get("repository", {}).get("full_name", "unknown")
     time_now = datetime.datetime.now().isoformat()
     commits = payload.get("commits", [])
+    commit_msg = commits[0]["message"] if commits else "No commit message"
 
     log_path = f"/log/{branch}.log"
     os.makedirs("/log", exist_ok=True)
@@ -86,7 +87,6 @@ def OnPushWBTeam(payload):
                 "PUSHER": pusher,
                 "REPO": repo,
                 "COMMIT_MSG": commit_msg,
-                "AUTHOR": author
             }
         )
         print(f"[+] DevTeam test started for {branch}")

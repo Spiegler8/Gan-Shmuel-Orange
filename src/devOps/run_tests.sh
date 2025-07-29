@@ -16,7 +16,7 @@ send_slack_msg() {
     "$CI_BOT_CHANNEL"
 }
 # Send start message
-send_slack_msg "*[CI]* 🚀 CI started on branch *$BRANCH*\n👤 Author: *$AUTHOR*\n📝 Commit: _${COMMIT_MSG}_"
+send_slack_msg "*[CI]* 🚀 CI started on branch *$BRANCH*\n👤 Author: *$PUSHER*\n📝 Commit: _${COMMIT_MSG}_"
 
 
 
