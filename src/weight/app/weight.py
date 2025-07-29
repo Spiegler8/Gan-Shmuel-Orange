@@ -1,10 +1,9 @@
-
-import os
-from flask import Flask,request,jsonify
-from datetime import datetime 
-import mysql.connector
-import json     # for parsing JSON file content
 import csv
+import json  # for parsing JSON file content
+import mysql.connector
+import os
+from datetime import datetime
+from flask import Flask, request, jsonify
 from io import StringIO
 
 app = Flask(__name__)
@@ -39,6 +38,7 @@ def health_check():
         print("Health check failed:", e)
         return "Failure", 500
 
+
 # ----POST weight endpoint----
 
 # Helper function to find the last session for a truck
@@ -50,6 +50,7 @@ def find_last_session(cursor, truck):
     """, (truck,))
     return cursor.fetchone()
 
+
 # Helper function to find the last "in" session for a truck
 def find_last_in_session(cursor, truck):
     cursor.execute("""
@@ -58,6 +59,7 @@ def find_last_in_session(cursor, truck):
         ORDER BY datetime DESC LIMIT 1
     """, (truck,))
     return cursor.fetchone()
+
 
 # Helper function to calculate neto weight for an "out" session
 def calculate_neto(cursor, in_session, truck_tara):
@@ -71,17 +73,17 @@ def calculate_neto(cursor, in_session, truck_tara):
                 SELECT weight FROM containers_registered
                 WHERE container_id=%s
                 """, (container_id,))
-            row = cursor.fetchone()           
+            row = cursor.fetchone()
 
-            if row and row["weight"] is not None: # If the container exists and has a weight, add it to the total
-                total_container_tara += row["weight"]           
-            else: # If it doesn't exist or has no weight, add to unknown_containers
+            if row and row["weight"] is not None:  # If the container exists and has a weight, add it to the total
+                total_container_tara += row["weight"]
+            else:  # If it doesn't exist or has no weight, add to unknown_containers
                 unknown_containers.append(container_id)
 
     # If even one container’s weight is missing, we cannot calculate neto correctly
     if unknown_containers:
-        return None    
-    else:    
+        return None
+    else:
         return in_session["bruto"] - truck_tara - total_container_tara
 
 
@@ -90,23 +92,24 @@ def record_weight():
     conn = None
     cursor = None
     try:
-        data = request.get_json(force=True) # Reads the incoming JSON payload from the client request body
-        
+        data = request.get_json(force=True)  # Reads the incoming JSON payload from the client request body
+
         # Extract and validate fields
-        direction = data.get("direction") # must be "in", "out", or "none"
-        truck = data.get("truck", "na") # truck license or "na" if not relevant
-        containers = data.get("containers", []) # list of container IDs, or an empty list if the client didnt send a containers field
-        weight = data.get("weight") # bruto weight of the truck/containers
-        unit = data.get("unit", "kg") # "kg" or "lbs", defaults to "kg"
-        force = data.get("force", False) # if True, used for overwriting previous records
-        produce = data.get("produce", "na") # produce type, defaults to "na"
+        direction = data.get("direction")  # must be "in", "out", or "none"
+        truck = data.get("truck", "na")  # truck license or "na" if not relevant
+        containers = data.get("containers",
+                              [])  # list of container IDs, or an empty list if the client didnt send a containers field
+        weight = data.get("weight")  # bruto weight of the truck/containers
+        unit = data.get("unit", "kg")  # "kg" or "lbs", defaults to "kg"
+        force = data.get("force", False)  # if True, used for overwriting previous records
+        produce = data.get("produce", "na")  # produce type, defaults to "na"
 
         # Validate required fields
         if direction not in ["in", "out", "none"]:
             return jsonify({"error": "Direction must be in, out, or none"}), 400
         if weight is None:
             return jsonify({"error": "Weight is required"}), 400
-        
+
         # Convert containers to a list if it's a string
         if isinstance(containers, str):
             containers = [c.strip() for c in containers.split(",") if c.strip()]
@@ -120,7 +123,7 @@ def record_weight():
         truck_tara = None
         neto = None
         last = find_last_session(cursor, truck)
-        
+
         if direction == "in":
             if last and last["direction"] == "in" and not force:
                 return jsonify({"error": "Cannot do 'in' after 'in' without force=True"}), 400
@@ -133,7 +136,7 @@ def record_weight():
             in_session = find_last_in_session(cursor, truck)
             if not in_session:
                 return jsonify({"error": "No matching 'in' session found for this truck"}), 400
-            
+
             truck_tara = weight
             neto = calculate_neto(cursor, in_session, truck_tara)
 
@@ -142,17 +145,17 @@ def record_weight():
                 UPDATE transactions
                 SET truckTara=%s, neto=%s
                 WHERE id=%s               
-            """, (truck_tara, neto, in_session["id"])) 
+            """, (truck_tara, neto, in_session["id"]))
 
         elif direction == "none":
             if last and last["direction"] == "in":
                 return jsonify({"error": "'none' cannot follow 'in'"}), 400
-            
+
         # Insert the new transaction record
         cursor.execute("""
             INSERT INTO transactions (datetime, direction, truck, containers, bruto, truckTara, neto, produce)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)             
-        """, (timestamp, direction, truck, containers_str, weight, truck_tara, neto, produce)) 
+        """, (timestamp, direction, truck, containers_str, weight, truck_tara, neto, produce))
         conn.commit()
 
         # Get the ID of the newly inserted record
@@ -164,25 +167,25 @@ def record_weight():
             "truck": truck,
             "bruto": weight
         }
-        
+
         # if out also include truckTara and neto
         if direction == "out":
             response["truckTara"] = truck_tara
             response["neto"] = neto if neto is not None else "na"
 
         return jsonify(response), 201
-    
+
     except Exception as e:
         if conn:
-            conn.rollback() # Rollback any changes if an error occurs
+            conn.rollback()  # Rollback any changes if an error occurs
         return jsonify({"error": str(e)}), 500
     finally:
         if cursor: cursor.close()
         if conn: conn.close()
 
- # ----POST weight endpoint end----            
-    
-    
+
+# ----POST weight endpoint end----
+
 
 @app.route("/weight", methods=["GET"])
 def get_weight():
@@ -209,8 +212,8 @@ def get_weight():
             WHERE datetime >= %s AND datetime <= %s
             AND direction IN ({placeholders})
             """
-        
-        params = [t1,t2] + filters
+
+        params = [t1, t2] + filters
         cursor.execute(query, params)
         rows = cursor.fetchall()
 
@@ -220,18 +223,17 @@ def get_weight():
         for row in rows:
             # Convert containers from comma-separated string to list
             row["containers"] = row["containers"].split(",") if row["containers"] else []
-            # If neto is NULL in DB, return "na" 
+            # If neto is NULL in DB, return "na"
             row["neto"] = row["neto"] if row["neto"] is not None else "na"
-        
+
         return jsonify(rows), 200
-    
+
     except Exception as e:
         print("Error fetching weights:", e)
         return jsonify({"error": "Database query failed"}), 500
     finally:
         if cursor: cursor.close()
-        if conn: conn.close()   
-
+        if conn: conn.close()
 
 
 @app.route("/session/<int:session_id>", methods=["GET"])
@@ -242,19 +244,19 @@ def get_session(session_id):
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        
+
         # Fetch the session details
         cursor.execute("""
             SELECT id, direction, truck, bruto, truckTara, neto 
             FROM transactions 
             WHERE id = %s
         """, (session_id,))
-        
+
         # Fetch the first result (and only one)
         row = cursor.fetchone()
         if not row:
             return jsonify({"error": f"Session with id {session_id} not found"})
-        
+
         # Always return truckTara and neto
         session_data = {
             "id": row["id"],
@@ -268,14 +270,13 @@ def get_session(session_id):
             session_data["neto"] = row["neto"] if row["neto"] is not None else "na"
 
         return jsonify(session_data), 200
-    
+
     except Exception as e:
         print("Error fetching session:", e)
         return jsonify({"error": "Database query failed"}), 500
     finally:
         if cursor: cursor.close()
         if conn: conn.close()
-
 
 
 @app.route("/item/<string:item_id>", methods=["GET"])
@@ -287,7 +288,7 @@ def get_item(item_id):
     if not t1:
         first_of_month = datetime.now().replace(day=1, hour=0, minute=0, second=0)
         t1 = first_of_month.strftime("%Y%m%d%H%M%S")
-    
+
     # If the user didn’t send to, set it to now
     if not t2:
         t2 = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -310,7 +311,7 @@ def get_item(item_id):
         # No results found
         if not rows:
             return jsonify({"error": f"No records found for item {item_id}"}), 404
-        
+
         # Lists of all transaction IDs (sessions) that involve this item.
         sessions = [row["id"] for row in rows]
 
@@ -333,13 +334,13 @@ def get_item(item_id):
             container_row = cursor.fetchone()
             if container_row and container_row["weight"] is not None:
                 tara = container_row["weight"]
-        
+
         return jsonify({
             "id": item_id,
             "tara": tara,
             "sessions": sessions
         }), 200
-    
+
     except Exception as e:
         print("Error fetching item:", e)
         return jsonify({"error": "Database query failed"}), 500
@@ -348,18 +349,19 @@ def get_item(item_id):
         if conn: conn.close()
 
 
-
 # helper function for Post /batch-weight
 """
     Processes CSV content line-by-line, extracts container_id, weight, and unit,
     and inserts or updates them in the containers_registered table.
 """
+
+
 def process_csv(content, conn):
     cursor = None
     try:
         cursor = conn.cursor()
         reader = csv.reader(StringIO(content.strip()))
-        
+
         for row in reader:
             if len(row) != 2:
                 continue  # skip invalid lines
@@ -385,11 +387,14 @@ def process_csv(content, conn):
         if cursor:
             cursor.close()
 
+
 # helper function for Post /batch-weight
 """
     Processes a JSON list of container objects and stores them in the database.
     Each object should contain: id, weight, and unit.
 """
+
+
 def process_json(content, conn):
     cursor = None
     try:
@@ -412,10 +417,12 @@ def process_json(content, conn):
         if cursor:
             cursor.close()
 
-   
+
 """
     Uploads a .csv or .json file to register multiple containers in the database.
-"""   
+"""
+
+
 @app.route('/batch-weight', methods=['POST'])
 def batch_weight():
     file = request.files.get('file')  # get uploaded file from form-data
