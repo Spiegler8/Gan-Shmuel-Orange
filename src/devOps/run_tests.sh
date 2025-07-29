@@ -4,6 +4,20 @@ BRANCH=$1
 REPO_PATH="/home/ubuntu/myrepo"
 LOG_FILE="/log/${BRANCH}.log"
 
+# Load Slack webhook from env file
+source ~/slack.env
+
+# Function to send Slack message
+send_slack_msg() {
+  local msg="$1"
+  curl -X POST -H 'Content-type: application/json' \
+    --data "{\"text\":\"$msg\"}" \
+    "$CI_BOT_CHANNEL"
+}
+
+# Send start message
+send_slack_msg "*[CI]* 👋 Hello from run_tests.sh on branch *$BRANCH*"
+
 echo "[Runner] Starting test for branch: $BRANCH" >> $LOG_FILE
 cd "$REPO_PATH"
 
