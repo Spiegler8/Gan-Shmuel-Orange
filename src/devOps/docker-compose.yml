@@ -1,0 +1,12 @@
+
+services:
+  ci-portal:
+    container_name: ci-portal
+    build:
+      context: ./devOps     # assumes your Dockerfile is here
+    ports:
+      - "8080:8080"          # Flask app exposed to host
+    volumes:
+      - /host_scripts:/host_scripts        # ✅ for CI scripts
+      - /var/run/docker.sock:/var/run/docker.sock  # ✅ for Docker access
+    restart: unless-stopped

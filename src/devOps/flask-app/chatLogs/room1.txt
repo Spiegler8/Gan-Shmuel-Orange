@@ -1,8 +1,0 @@
-[2025-07-23 10:00:00] Dori: Hello!
-[2025-07-23 10:01:00] Itay: Hi there!
-[2025-07-23 10:06:30] Dori: Are we meeting soon?
-
-2025-07-23 14:22:29 - dori: msgggggggg
-
-2025-07-23 14:22:31 - dori: msgggggggg
-
