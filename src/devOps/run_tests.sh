@@ -22,7 +22,6 @@ send_slack_msg "*[CI]* 🚀 CI started on branch *$BRANCH*\n👤 Author: *$PUSHE
 
 
 echo "[CI] 🚀 Starting CI for branch: $BRANCH" #log
->>>>>>> main-devops
 
 # Clone the repo
 echo "[CI] Cloning $BRANCH..."
