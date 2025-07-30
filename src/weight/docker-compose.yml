@@ -1,13 +1,16 @@
 
 services:
   db:
+    container_name: weight_db
     image: mysql:8
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
     ports:
-      - "3306:3306"
+      - "3307:3306"
+    networks:
+      - shared-network
     volumes:
       - db_data:/var/lib/mysql
       - ./db_schemas/weightdb.sql:/docker-entrypoint-initdb.d/weightdb.sql:ro
@@ -18,9 +21,12 @@ services:
       retries: 5
 
   weight-app:
+    container_name: weight_service
     build: .
     ports:
-      - "5000:5000"
+      - "8082:5000"
+    networks:
+      - shared-network
     depends_on:
       db:
         condition: service_healthy
@@ -34,3 +40,8 @@ services:
 
 volumes:
   db_data:
+
+networks:
+  shared-network:
+    external: true
+
