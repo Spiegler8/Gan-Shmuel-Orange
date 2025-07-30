@@ -141,9 +141,7 @@ def update_provider_name(id):
 
 @app.route("/rates", methods=["POST"])
 def upload_rates():
-    excel_files = glob.glob(
-        "/in/*.xlsx"
-    )  # direct path, no need to define UPLOAD_FOLDER
+    excel_files = glob.glob("/in/*.xlsx")
 
     if not excel_files:
         return jsonify({"message": "No Excel files found in /app/in"}), 400
@@ -166,7 +164,7 @@ def upload_rates():
                 scope = str(row["Scope"]).strip().upper()
 
                 cursor.execute(
-                    "SELECT rate FROM Rates WHERE product_id = %s AND UPPER(scope) = %s",
+                    "SELECT rate FROM Rates WHERE product = %s AND UPPER(scope) = %s",
                     (product, scope),
                 )
                 result = cursor.fetchone()
@@ -175,13 +173,13 @@ def upload_rates():
                     existing_rate = result[0]
                     if existing_rate != rate:
                         cursor.execute(
-                            "UPDATE Rates SET rate = %s WHERE product_id = %s AND scope = %s",
+                            "UPDATE Rates SET rate = %s WHERE product = %s AND UPPER(scope) = %s",
                             (rate, product, scope),
                         )
                         updated_rows += 1
                 else:
                     cursor.execute(
-                        "INSERT INTO Rates (product_id, rate, scope) VALUES (%s, %s, %s)",
+                        "INSERT INTO Rates (product, rate, scope) VALUES (%s, %s, %s)",
                         (product, rate, scope),
                     )
                     inserted_rows += 1
@@ -203,6 +201,7 @@ def upload_rates():
             cursor.close()
         if conn:
             conn.close()
+
 
 
 
@@ -373,6 +372,12 @@ def download_rates():
         return jsonify({"error": str(e)}), 500
 
 
+from collections import defaultdict
+import requests
+from flask import Flask, request, jsonify
+from datetime import datetime
+import mysql.connector
+
 @app.route("/bill/<provider_id>", methods=["GET"])
 def get_bill(provider_id):
     from_str = request.args.get("from")
@@ -383,7 +388,7 @@ def get_bill(provider_id):
     if not to_str:
         to_str = datetime.now().strftime("%Y%m%d%H%M%S")
 
-    # Validate date formats
+    # Validate format
     try:
         datetime.strptime(from_str, "%Y%m%d%H%M%S")
         datetime.strptime(to_str, "%Y%m%d%H%M%S")
@@ -397,69 +402,68 @@ def get_bill(provider_id):
 
         # Get provider name
         cursor.execute("SELECT name FROM Provider WHERE id = %s", (provider_id,))
-        provider_row = cursor.fetchone()
-        if not provider_row:
+        row = cursor.fetchone()
+        if not row:
             return jsonify({"error": "Provider not found"}), 404
-        provider_name = provider_row[0]
+        provider_name = row[0]
 
-        # Get all trucks of provider
+        # Get trucks
         cursor.execute("SELECT id FROM Trucks WHERE provider_id = %s", (provider_id,))
         truck_rows = cursor.fetchall()
         if not truck_rows:
             return jsonify({"error": "No trucks registered for this provider"}), 404
 
-        truck_ids = [row[0] for row in truck_rows]
+        truck_ids = [r[0] for r in truck_rows]
         truck_count = len(truck_ids)
 
-        # Collect all session IDs
-        all_sessions = set()
+        # Step 1: Get all session IDs from weight server for each truck
+        session_ids = set()
         for truck_id in truck_ids:
-            req = requests.get(
-                f"http://weight-app:5000/item/{truck_id}?from={from_str}&to={to_str}"
-            )
-            if req.status_code == 200:
-                sessions = req.json().get("sessions", [])
-                all_sessions.update(sessions)
+            resp = requests.get(f"http://weight-app:5000/item/{truck_id}?from={from_str}&to={to_str}")
+            if resp.status_code == 200:
+                truck_data = resp.json()
+                session_ids.update(truck_data.get("sessions", []))
 
-        session_count = len(all_sessions)
+        session_count = len(session_ids)
 
-        # Get all OUT sessions during time range
-        req = requests.get(
-            f"http://weight-app:5000/weight?from={from_str}&to={to_str}&filter=out"
-        )
-        if req.status_code != 200:
+        # Step 2: Fetch all 'out' sessions from weight server during that time range
+        from_fmt = datetime.strptime(from_str, "%Y%m%d%H%M%S").strftime("%Y-%m-%d %H:%M:%S")
+        to_fmt = datetime.strptime(to_str, "%Y%m%d%H%M%S").strftime("%Y-%m-%d %H:%M:%S")
+
+        resp = requests.get(f"http://weight-app:5000/weight?from={from_fmt}&to={to_fmt}&filter=out")
+        if resp.status_code != 200:
             return jsonify({"error": "Failed to fetch weight data"}), 500
 
-        out_sessions = req.json()
+        out_sessions = resp.json()
 
-        # Filter relevant sessions (only those from provider's trucks)
+        # Step 3: Filter relevant sessions
         product_data = defaultdict(lambda: {"count": 0, "amount": 0})
         for session in out_sessions:
-            if session["id"] not in all_sessions:
+            if session["id"] not in session_ids:
                 continue
             neto = session.get("neto")
-            product = session.get("product")
+            product = session.get("produce")
             if neto == "na" or not product:
                 continue
             product_data[product]["count"] += 1
             product_data[product]["amount"] += neto
 
-        # Fetch all rates
+        # Step 4: Get product rates from billing DB
         cursor.execute("SELECT product, rate, scope FROM Rates")
         rate_rows = cursor.fetchall()
-        rate_map = {}  # product -> rate
+        rate_map = {}
         for product, rate, scope in rate_rows:
             if product not in rate_map or scope == provider_id:
                 rate_map[product] = rate
 
-        # Prepare final product list
+        # Step 5: Build final response
         products = []
         total_agorot = 0
 
         for product, data in product_data.items():
             rate = rate_map.get(product)
             if rate is None:
-                continue  # Skip products with no rate
+                continue
             pay = data["amount"] * rate
             total_agorot += pay
             products.append({
@@ -483,12 +487,14 @@ def get_bill(provider_id):
 
     except mysql.connector.Error as err:
         return jsonify({"error": str(err)}), 500
-
     finally:
         if cursor:
             cursor.close()
         if conn:
             conn.close()
 
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=True)
+
+
