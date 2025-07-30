@@ -13,7 +13,8 @@ services:
       - ./in:/in
     working_dir: /app
     command: python billing.py
-
+    networks:
+      - gan-shmuel-network
   db:
     image: mysql:8.0
     container_name: billingdb
@@ -24,5 +25,10 @@ services:
       - "3306:3306"
     volumes:
       - ./app/db_schemas/multi-db/billingdb.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - gan-shmuel-network
+networks:
+  gan-shmuel-network:
+    external: true
 
 
