@@ -9,12 +9,11 @@ services:
     env_file:
       - .env
     volumes:
-      - ./app:/app
+      #- ./app:/app
       - ./in:/in
     networks:
       - shared-network
-    working_dir: /app
-    command: python billing.py
+    #command: python /app/billing.py
 
   db:
     image: mysql:8.0
