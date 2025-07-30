@@ -319,7 +319,7 @@ def get_truck_details(truck_id):
             return jsonify({"error": "Truck not found"}), 404
 
         # Fetch weight sessions from Weight system (external API)
-        weight_url = f"http://weight:5000/item/{truck_id}"
+        weight_url = f"http://weight-app:5000/item/{truck_id}"
         params = {
             "from": from_ts,
             "to": to_ts
@@ -415,7 +415,7 @@ def get_bill(provider_id):
         all_sessions = set()
         for truck_id in truck_ids:
             req = requests.get(
-                f"http://localhost:5000/item/{truck_id}?from={from_str}&to={to_str}"
+                f"http://weight-app:5000/item/{truck_id}?from={from_str}&to={to_str}"
             )
             if req.status_code == 200:
                 sessions = req.json().get("sessions", [])
@@ -425,7 +425,7 @@ def get_bill(provider_id):
 
         # Get all OUT sessions during time range
         req = requests.get(
-            f"http://localhost:5000/weight?from={from_str}&to={to_str}&filter=out"
+            f"http://weight-app:5000/weight?from={from_str}&to={to_str}&filter=out"
         )
         if req.status_code != 200:
             return jsonify({"error": "Failed to fetch weight data"}), 500
