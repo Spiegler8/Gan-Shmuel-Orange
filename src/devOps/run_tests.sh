@@ -7,7 +7,7 @@ TMP_DIR="/tmp/ci_run_$(date +%s)"
 #shouldnt be here !!
 
 # Load Slack webhook from env file on EC2
-source ~/slack.env
+source /home/ubuntu/slack.env
 
 # Function to send Slack message
 send_slack_msg() {
