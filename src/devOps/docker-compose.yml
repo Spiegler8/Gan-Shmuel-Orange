@@ -8,7 +8,7 @@ services:
       - "8080:8080"          # Flask app exposed to host
     volumes:       #  for CI scripts
       - /var/run/docker.sock:/var/run/docker.sock  # for Docker deamon  access, run docker command
-      - /home/ubuntu/slack.env:/slack.env  # Slack env file
+      - /home/ubuntu/slack.env:/home/ubuntu/slack.env  # Slack env file
       - /home/ubuntu/Gan-Shmuel-Orange/src/weight:/weight # service weight
       - /home/ubuntu/Gan-Shmuel-Orange/src/billing:/billing # service billing
     restart: unless-stopped
