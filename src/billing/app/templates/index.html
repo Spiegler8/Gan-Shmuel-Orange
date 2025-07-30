@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login Portal</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      color: #fff;
+      background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), 
+                  url("https://images.pexels.com/photos/3274210/pexels-photo-3274210.jpeg") center center / cover no-repeat;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-box {
+      text-align: center;
+      background-color: rgba(0, 0, 0, 0.6);
+      padding: 4rem;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(229, 9, 20, 0.5);
+    }
+
+    .login-box h1 {
+      font-size: 2.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .btn {
+      display: inline-block;
+      width: 220px;
+      margin: 1rem;
+      padding: 1rem 2rem;
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: white;
+      background-color: #e50914;
+      border: none;
+      border-radius: 6px;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      box-shadow: 0 5px 15px rgba(229, 9, 20, 0.3);
+    }
+
+    .btn:hover {
+      background-color: #b00610;
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <h1>Choose Login Type</h1>
+    <a class="btn" href="/AdminHomePage">Login as Admin</a>
+    <a class="btn" href="/ProviderHomePage">Login as Provider</a>
+    <a class="btn" href="/DeveloperHomePage">Login as Developer</a>
+  </div>
+</body>
+</html>
