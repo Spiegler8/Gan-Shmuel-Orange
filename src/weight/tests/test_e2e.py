@@ -1,8 +1,9 @@
+import os
 import requests
 import time
-import os
 
 BASE_URL = os.getenv("BASE_URL", "http://localhost:5000")
+
 
 def wait_for_service():
     for _ in range(30):
@@ -14,6 +15,7 @@ def wait_for_service():
             pass
         time.sleep(2)
     raise RuntimeError("Service not ready")
+
 
 def test_00_service_up():
     wait_for_service()
@@ -82,7 +84,7 @@ def test_04_item_endpoint():
 
 def test_05_batch_weight_csv(tmp_path):
     csv_file = tmp_path / "containers.csv"
-    csv_file.write_text("C1,100kg\nC2,120kg\n")
+    csv_file.write_text("id,kg\nC1,100\nC2,120\n")
     with open(csv_file, "rb") as f:
         r = requests.post(f"{BASE_URL}/batch-weight", files={"file": f})
     assert r.status_code == 201
