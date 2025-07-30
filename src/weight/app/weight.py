@@ -358,27 +358,43 @@ def get_item(item_id):
 
 
 def process_csv(content, conn):
+    """
+    Reads CSV content where the first row contains column headers.
+    The second column header determines the unit (lbs or kg).
+    Example:
+        "id","lbs"
+        K-8263,666
+        K-5269,666
+    """
     cursor = None
     try:
         cursor = conn.cursor()
         reader = csv.reader(StringIO(content.strip()))
 
+        # Read header row
+        header = next(reader, None)
+        if not header or len(header) < 2:
+            return  # nothing to process
+
+        # Detect unit from header's second column
+        header_unit = header[1].strip().lower()
+        if header_unit not in ("kg", "kgs", "lb", "lbs"):
+            raise ValueError(f"Unsupported unit in header: {header[1]}")
+
+        # Normalize unit
+        unit = "kg" if header_unit.startswith("kg") else "lbs"
+
+        # Process remaining rows
         for row in reader:
             if len(row) != 2:
                 continue  # skip invalid lines
 
-            cid, value_unit = row
-            cid = cid.strip()
-            value_unit = value_unit.strip().lower()
-
-            if value_unit.endswith('kg'):
-                unit = 'kg'
-                value = value_unit[:-2]
-            elif value_unit.endswith('lbs'):
-                unit = 'lbs'
-                value = value_unit[:-3]
-            else:
-                raise ValueError(f"Missing or unsupported unit in line: {','.join(row)}")
+            cid = row[0].strip()
+            try:
+                value = float(row[1].strip())
+            except ValueError:
+                # Skip rows with non-numeric values
+                continue
 
             cursor.execute("""
                 INSERT INTO containers_registered (container_id, weight, unit)
@@ -386,7 +402,7 @@ def process_csv(content, conn):
                 ON DUPLICATE KEY UPDATE 
                     weight = VALUES(weight),
                     unit = VALUES(unit)
-            """, (cid, int(float(value)), unit))
+            """, (cid, int(value), unit))
     finally:
         if cursor:
             cursor.close()

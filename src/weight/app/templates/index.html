@@ -63,15 +63,15 @@
             </p>
             <p>
                 Here are the available endpoints:
-                <ul>
-                    <li><strong>POST /weight</strong>: Add new weight session</li>
-                    <li><strong>GET /weight</strong>: View weight sessions</li>
-                    <li><strong>GET /item</strong>: Lookup truck or container by ID</li>
-                    <li><strong>GET /session</strong>: Lookup session by ID</li>
-                    <li><strong>GET /unknown</strong>: Find unknown containers</li>
-                    <li><strong>POST /batch-weight</strong>: Upload container weights (CSV/JSON)</li>
-                </ul>
-                Use the tabs above to access each API endpoint form.
+            <ul>
+                <li><strong>POST /weight</strong>: Add new weight session</li>
+                <li><strong>GET /weight</strong>: View weight sessions</li>
+                <li><strong>GET /item</strong>: Lookup truck or container by ID</li>
+                <li><strong>GET /session</strong>: Lookup session by ID</li>
+                <li><strong>GET /unknown</strong>: Find unknown containers</li>
+                <li><strong>POST /batch-weight</strong>: Upload container weights (CSV/JSON)</li>
+            </ul>
+            Use the tabs above to access each API endpoint form.
             </p>
         </div>
 
@@ -201,28 +201,45 @@
 
     function handleResponse(response, container, successMessage = "Success!", form = null, tableOnSuccess = true) {
         container.innerHTML = "";
-
-        if (!response.ok) {
-            if (form) form.reset();
-            response.json().then(data => {
-                container.innerHTML = `<div class="error-message">${data.error || "An error occurred"}</div>`;
-            }).catch(() => {
-                container.innerHTML = `<div class="error-message">An error occurred</div>`;
-            });
-        } else {
-            response.json().then(data => {
+        response.json().then(data => {
+            if (!response.ok) {
                 if (form) form.reset();
-                container.innerHTML = `<div class="success-message">${successMessage}</div>`;
+                container.innerHTML = `<div class="error-message">${data.error || "An error occurred"}</div>`;
+                return;
+            }
 
-                if (tableOnSuccess) {
-                    if (Array.isArray(data)) {
-                        container.innerHTML += renderUnknownContainers(data);
-                    } else {
-                        container.innerHTML += renderObjectAsTable(data);
-                    }
+            if (form) form.reset();
+            container.innerHTML = `<div class="success-message">${successMessage}</div>`;
+
+            if (!tableOnSuccess) return;
+
+            if (Array.isArray(data)) {
+                if (data.length > 0 && typeof data[0] === "object") {
+                    // Render array of objects as table
+                    let html = "<table class='table table-bordered'><thead><tr>";
+                    const headers = Object.keys(data[0]);
+                    headers.forEach(h => html += `<th>${h}</th>`);
+                    html += "</tr></thead><tbody>";
+
+                    data.forEach(row => {
+                        html += "<tr>";
+                        headers.forEach(h => html += `<td>${row[h]}</td>`);
+                        html += "</tr>";
+                    });
+
+                    html += "</tbody></table>";
+                    container.innerHTML += html;
+                } else {
+                    // Array of simple values
+                    container.innerHTML += renderUnknownContainers(data);
                 }
-            });
-        }
+            } else {
+                // Single object
+                container.innerHTML += renderObjectAsTable(data);
+            }
+        }).catch(() => {
+            container.innerHTML = `<div class="error-message">An error occurred</div>`;
+        });
     }
 
     // Event listeners

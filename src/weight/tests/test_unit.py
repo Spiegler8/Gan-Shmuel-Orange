@@ -266,7 +266,7 @@ class WeightServiceTests(unittest.TestCase):
 
     def test_process_csv_valid(self):
         """Test process_csv processes valid csv lines."""
-        csv_data = "C1,100kg\nC2,200lbs"
+        csv_data = "id,kg\nC1,100\nC2,200"
         mc = MagicMock()
         mcu = MagicMock()
         mc.cursor.return_value = mcu
@@ -312,7 +312,7 @@ class WeightServiceTests(unittest.TestCase):
     def test_batch_csv_success(self, mock_db):
         """Test /batch-weight processes CSV files successfully."""
         mock_db.return_value = self.mock_conn
-        f = BytesIO(b"C1,100kg\n")
+        f = BytesIO(b"id,kg\nC1,100\n")
         resp = self.client.post("/batch-weight",
                                 data={"file": (f, "c.csv")},
                                 content_type="multipart/form-data")
