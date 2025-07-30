@@ -3,7 +3,7 @@ services:
     build: .
     container_name: billing_service
     ports:
-      - "8000:8000"
+      - "8081:8000"
     depends_on:
       - db
     env_file:
@@ -11,18 +11,26 @@ services:
     volumes:
       - ./app:/app
       - ./in:/in
+    networks:
+      - shared-network
     working_dir: /app
     command: python billing.py
 
   db:
     image: mysql:8.0
-    container_name: billingdb
+    container_name: billing_db
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
     ports:
       - "3306:3306"
+    networks:
+      - shared-network
     volumes:
       - ./app/db_schemas/multi-db/billingdb.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+networks:
+  shared-network:
+    external: true
 
 
